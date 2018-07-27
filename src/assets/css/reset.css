@@ -1,0 +1,38 @@
+/**
+ * Created by dingyiming on 2017/6/2.
+ * <p>
+ * 江苏摇铃网络科技有限公司，版权所有。
+ * Copyright (C) 2015-2017 All Rights Reserved.
+ */
+html {
+  font-size: 100px;
+}
+
+body {
+  font-size: 16px;
+  color: #666666;
+  font-family: "Microsoft YaHei", "微软雅黑", "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", sans-serif;
+}
+
+html, body {
+  margin: 0;
+}
+
+input,select,textarea,label {
+  font-family: "Microsoft YaHei", "微软雅黑", "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", sans-serif;
+}
+
+a {
+  text-decoration: none;
+}
+
+ul, ol {
+  list-style: none;
+}
+
+html, body, div, h1, h2, h3, h4, h5, h6, p, dl, dt, dd, ol, ul, li, fieldset, form, label, input, legend, table, caption, tbody, tfoot, thead, tr, th, td, textarea, article, aside, audio, canvas, figure, footer, header, mark, menu, nav, section, time, video {
+  margin: 0;
+  padding: 0;
+}
+
+.app { min-width: 1024px; }
