@@ -1,10 +1,13 @@
 <template>
   <div id="Map">
-    <div class="leftnav" :style="windowHeight">
+
+    <div class="leftnav">
+
       <p class="title">
         <span>
           <i class="icon iconfont icon-ditu"></i>用电人口数量/热力图</span>
       </p>
+
       <ul class="card" :style="hotShow? '': 'opacity: 0.4;'">
         <p class="card-title">
           <span>
@@ -26,18 +29,22 @@
         </li>
       </ul>
     </div>
-    <div id="allmap" class="allmap" :style="windowHeight"></div>
+
+    <div id="allmap" class="allmap"></div>
+
     <div class="map-button">
       <el-select v-model="value" placeholder="请选择">
         <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value">
         </el-option>
       </el-select>
     </div>
+
   </div>
 </template>
 
 <script>
 import MP from './map';
+import drawingManager from './drawingManager';
 
 export default {
   name: 'Map',
@@ -53,53 +60,39 @@ export default {
         };
         map.setMapStyle(mapStyle);
         map.enableScrollWheelZoom(true); // 开启鼠标滚轮缩放
-        map.addControl(new BMap.NavigationControl({
-          type: BMAP_NAVIGATION_CONTROL_SMALL,
-          anchor: BMAP_ANCHOR_BOTTOM_RIGHT,
-          offset: new BMap.Size(50, 50),
-        })); // 平移缩放控件
+        map.addControl(
+          new BMap.NavigationControl({
+            // eslint-disable-next-line
+            type: BMAP_NAVIGATION_CONTROL_SMALL,
+            // eslint-disable-next-line
+            anchor: BMAP_ANCHOR_BOTTOM_RIGHT,
+            offset: new BMap.Size(50, 50),
+          }),
+        ); // 平移缩放控件
         this.checkhHtml5();
-        // 初始化画图
-        // const styleOptions = {
-        //   strokeColor: 'red', // 边线颜色。
-        //   fillColor: 'red', // 填充颜色。当参数为空时，圆形将没有填充效果。
-        //   strokeWeight: 3, // 边线的宽度，以像素为单位。
-        //   strokeOpacity: 0.8, // 边线透明度，取值范围0 - 1。
-        //   fillOpacity: 0.6, // 填充的透明度，取值范围0 - 1。
-        //   strokeStyle: 'solid', // 边线的样式，solid或dashed。
-        // };
-        // // 实例化鼠标绘制工具
-        // map.drawingManager = new BMap.DrawingManager(map, {
-        //   isOpen: false, // 是否开启绘制模式
-        //   enableDrawingTool: true, // 是否显示工具栏
-        //   drawingToolOptions: {
-        //     anchor: BMAP_ANCHOR_TOP_RIGHT, // 位置
-        //     offset: new BMap.Size(5, 5), // 偏离值
-        //   },
-        //   circleOptions: styleOptions, // 圆的样式
-        //   polylineOptions: styleOptions, // 线的样式
-        //   polygonOptions: styleOptions, // 多边形的样式
-        //   rectangleOptions: styleOptions, // 矩形的样式
-        // });
+
+        this.drawingManager = drawingManager.init(map);
+
+        this.drawingManager.addEventListener('overlaycomplete', this.overlaycomplete);
       });
     });
-    console.log(window.innerHeight);
-    this.windowHeight = `height:${window.innerHeight}px;`;
   },
   data() {
     return {
       ak: '1y2hRgyFgIGGkM9m9vmrmsLGsHvwnsUU',
-      windowHeight: '',
       hotList: ['常驻人口', '工作人口', '实时人口'],
       numList: ['常驻人口', '工作人口', '实时人口'],
       hotActive: '常驻人口',
       numActive: '常驻人口',
       hotShow: true,
       numShow: true,
-      options: [{
-        value: '绵阳市',
-      }],
+      options: [
+        {
+          value: '绵阳市',
+        },
+      ],
       value: '绵阳市',
+      drawingManager: null,
     };
   },
   methods: {
@@ -132,6 +125,10 @@ export default {
     IsNumShow() {
       this.numShow = !this.numShow;
     },
+    //  操作百度地图工具回调
+    overlaycomplete(e) {
+      console.log('e', e);
+    },
   },
 };
 </script>
@@ -151,21 +148,30 @@ export default {
 }
 #Map {
   width: 100%;
+  height: 100%;
+  position: fixed;
+  left: 0;
+  top: 0;
   overflow: hidden;
   margin: 0 auto;
 }
 .allmap {
-  margin-left: 300px;
-  float: right;
-  width: 100%;
   position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  z-index: 1;
 }
 .leftnav {
-  position: relative;
-  background: #fff;
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
   width: 300px;
-  float: left;
+  background: #fff;
   color: #585858;
+  z-index: 2;
 }
 .title {
   width: 100%;
