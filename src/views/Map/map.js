@@ -10,7 +10,11 @@ const MP = (ak) => {
 
     window.onload = () => {
       let index = 0;
-      const jsSrc = ['./static/DrawingManager_min.js', './static/Heatmap_min.js'];
+      const jsSrc = [
+        './static/DrawingManager_min.js',
+        './static/Heatmap_min.js',
+        './static/GeoUtils_min.js',
+      ];
       const callback = () => {
         index += 1;
         if (index === jsSrc.length) {
