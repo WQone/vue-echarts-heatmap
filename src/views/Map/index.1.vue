@@ -11,9 +11,9 @@
       <ul class="card" :style="hotShow? '': 'opacity: 0.4;'">
         <p class="card-title">
           <span>
-            <i class="icon iconfont" @click="IsTypeShow(1)" :class="hotShow? 'icon-chakan-copy' : 'icon-yanjing'"></i>用电人口分布热力图</span>
+            <i class="icon iconfont" @click="IsHotShow" :class="hotShow? 'icon-chakan-copy' : 'icon-yanjing'"></i>用电人口分布热力图</span>
         </p>
-        <li class="card-list" v-for="item in hotList" :key="item" @click="changeType(item, 1)">
+        <li class="card-list" v-for="item in hotList" :key="item" @click="changeHot(item)">
           <span>
             <i class="icon iconfont icon-dangqianweizhi1" :style="hotActive === item ? '':'color:white;'"></i>{{item}}</span>
         </li>
@@ -21,9 +21,9 @@
       <ul class="card" :style="numShow? '': 'opacity: 0.4;'">
         <p class="card-title">
           <span>
-            <i class="icon iconfont" @click="IsTypeShow(2)" :class="numShow? 'icon-chakan-copy' : 'icon-yanjing'"></i>用电人口分布数量图</span>
+            <i class="icon iconfont" @click="IsNumShow" :class="numShow? 'icon-chakan-copy' : 'icon-yanjing'"></i>用电人口分布数量图</span>
         </p>
-        <li class="card-list" v-for="item in numList" :key="item" @click="changeType(item, 2)">
+        <li class="card-list" v-for="item in numList" :key="item" @click="changeNum(item)">
           <span>
             <i class="icon iconfont icon-dangqianweizhi1" :style="numActive === item ? '':'color:white;'"></i>{{item}}</span>
         </li>
@@ -33,6 +33,7 @@
     <div id="allmap" class="allmap"></div>
 
     <div class="map-button">
+      <!-- <div class="el-input--suffix el-input__inner cover-text">{{city}}</div> -->
       <el-select :value="city" popper-class="map-select">
         <el-option :value="city">
           <el-card class="select-card" shadow="never">
@@ -46,11 +47,9 @@
                 <span v-for="(item,index) in historyList" :key="index" @click="changeCity(item)">{{item}}</span>
               </p>
             </div>
-            <div class="select-content">
-              <div v-for="(item,index) in cityList" :key="index">
-                <span class="s-title" @click="changeCity(item.name)">{{item.name}}：</span>
-                <span class="s-txt" v-for="iChild in item.children" :key="iChild" @click="changeCity(iChild)">{{iChild}}</span>
-              </div>
+            <div v-for="(item,index) in cityList" :key="index" class="select-content">
+              <span class="s-title" @click="changeCity(item.name)">{{item.name}}：</span>
+              <span class="s-txt" v-for="iChild in item.children" :key="iChild" @click="changeCity(iChild)">{{iChild}}</span>
             </div>
           </el-card>
         </el-option>
@@ -60,9 +59,6 @@
 </template>
 
 <script>
-/* global BMap */
-/* global BMapLib */
-
 import MP from './map';
 import drawingManager from './drawingManager';
 
@@ -72,46 +68,33 @@ export default {
     this.$nextTick(() => {
       // 在此调用api
       MP(this.ak).then((BMap) => {
-        this.map = new BMap.Map('allmap', { enableMapClick: false });
-        this.map.centerAndZoom(new BMap.Point(104.73, 31.47), 14); // 初始化地图，设置中心点坐标和地图级别
+        const map = new BMap.Map('allmap', { enableMapClick: true });
+        map.centerAndZoom(new BMap.Point(104.73, 31.47), 12);
         const mapStyle = {
-          // features: ['road', 'building', 'water', 'land'], // 隐藏地图上的poi
+          features: ['road', 'building', 'water', 'land'], // 隐藏地图上的poi
           style: 'dark', // 设置地图风格为高端黑
         };
-        this.map.setMapStyle(mapStyle);
-        this.map.enableScrollWheelZoom(true); // 开启鼠标滚轮缩放
-
-        this.map.addControl(
-          // 平移缩放控件
+        map.setMapStyle(mapStyle);
+        map.enableScrollWheelZoom(true); // 开启鼠标滚轮缩放
+        map.addControl(
           new BMap.NavigationControl({
             // eslint-disable-next-line
             type: BMAP_NAVIGATION_CONTROL_SMALL,
             // eslint-disable-next-line
             anchor: BMAP_ANCHOR_BOTTOM_RIGHT,
-            offset: new BMap.Size(15, 15),
+            offset: new BMap.Size(50, 50),
           }),
-        );
+        ); // 平移缩放控件
         this.checkhHtml5();
 
-        this.drawingManager = drawingManager.init(this.map);
+        this.drawingManager = drawingManager.init(map);
 
         this.drawingManager.addEventListener('overlaycomplete', this.overlaycomplete);
-
-        // 添加定位控件
-        // let geolocationControl = new BMap.GeolocationControl();
-        // geolocationControl.addEventListener('locationSuccess', this.locationSuccess);
-        // map.addControl(geolocationControl);
-
-        this.markerShow(); // 标注
-        this.heatmapShow(); // 热力图
       });
     });
   },
   data() {
     return {
-      map: '',
-      heatmapOverlay: '',
-      markerArr: [], // 标注点数组
       ak: '1y2hRgyFgIGGkM9m9vmrmsLGsHvwnsUU',
       hotList: ['常驻人口', '工作人口', '实时人口'],
       numList: ['常驻人口', '工作人口', '实时人口'],
@@ -148,42 +131,25 @@ export default {
         }
       }
     },
-    // 改变热力图1/数量图2-类型
-    changeType(val, type) {
-      if (type === 1) {
-        if (!this.hotShow) {
-          return;
-        }
-        this.hotActive = val;
-      } else {
-        if (!this.numShow) {
-          return;
-        }
-        this.numActive = val;
+    changeHot(val) {
+      if (!this.hotShow) {
+        return;
       }
+      this.hotActive = val;
       console.log(val);
     },
-    // 显示隐藏热力1/数量2-图
-    IsTypeShow(type) {
-      if (type === 1) {
-        this.hotShow = !this.hotShow;
-        if (!this.hotShow) {
-          this.heatmapOverlay.hide();
-        } else {
-          this.heatmapOverlay.show();
-        }
-      } else {
-        this.numShow = !this.numShow;
-        if (!this.numShow) {
-          for (let i = 0; i < this.markerArr.length; i += 1) {
-            this.map.removeOverlay(this.markerArr[i]);
-          }
-        } else {
-          for (let i = 0; i < this.markerArr.length; i += 1) {
-            this.map.addOverlay(this.markerArr[i]);
-          }
-        }
+    changeNum(val) {
+      if (!this.numShow) {
+        return;
       }
+      this.numActive = val;
+      console.log(val);
+    },
+    IsHotShow() {
+      this.hotShow = !this.hotShow;
+    },
+    IsNumShow() {
+      this.numShow = !this.numShow;
     },
     // 改变当前地区
     changeCity(val) {
@@ -194,100 +160,21 @@ export default {
     overlaycomplete(e) {
       console.log('e', e);
     },
-    // 地图定位事件
-    locationSuccess() {
-      // 定位成功事件
-      // let address = '';
-      // address += e.addressComponent.province;
-      // address += e.addressComponent.city;
-      // address += e.addressComponent.district;
-      // address += e.addressComponent.street;
-      // address += e.addressComponent.streetNumber;
-      // console.log('当前定位地址为：' + e.addressComponent.province);
-    },
-    // 随机向地图添加25个标注
-    markerShow() {
-      const bounds = this.map.getBounds();
-      const sw = bounds.getSouthWest();
-      const ne = bounds.getNorthEast();
-      const lngSpan = Math.abs(sw.lng - ne.lng);
-      const latSpan = Math.abs(ne.lat - sw.lat);
-      this.markerArr = [];
-      const pointArray = [];
-      for (let i = 0; i < 25; i += 1) {
-        const marker = new BMap.Marker(
-          new BMap.Point(
-            sw.lng + lngSpan * (Math.random() * 0.7),
-            ne.lat - latSpan * (Math.random() * 0.7),
-          ),
-        ); // 创建标注
-        pointArray[i] = new BMap.Point(
-          sw.lng + lngSpan * (Math.random() * 0.7),
-          ne.lat - latSpan * (Math.random() * 0.7),
-        );
-        const content = `${i}`;
-        this.map.addOverlay(marker); // 将标注添加到地图中
-        this.addClickHandler(content, marker);
-        this.markerArr.push(marker);
-      }
-      this.map.setViewport(pointArray); // 让所有点在视野范围内
-    },
-    // 标注点击事件
-    addClickHandler(content, marker) {
-      marker.addEventListener('click', (e) => {
-        this.openInfo(content, e);
-      });
-    },
-    // 标注信息窗口
-    openInfo(content, e) {
-      const opts = {
-        width: 80, // 信息窗口宽度
-        height: 40, // 信息窗口高度
-        title: '信息窗口', // 信息窗口标题
-        enableMessage: true, // 设置允许信息窗发送短息
-      };
-      const p = e.target;
-      const point = new BMap.Point(p.getPosition().lng, p.getPosition().lat);
-      const infoWindow = new BMap.InfoWindow(content, opts); // 创建信息窗口对象
-      this.map.openInfoWindow(infoWindow, point); // 开启信息窗口
-    },
-    // 加载热力图
-    heatmapShow() {
-      this.heatmapOverlay = new BMapLib.HeatmapOverlay({ radius: 20 });
-      this.map.addOverlay(this.heatmapOverlay);
-      const bounds = this.map.getBounds();
-      const sw = bounds.getSouthWest();
-      const ne = bounds.getNorthEast();
-      const lngSpan = Math.abs(sw.lng - ne.lng);
-      const latSpan = Math.abs(ne.lat - sw.lat);
-      const arr = [];
-      for (let i = 0; i < 500; i += 1) {
-        const a = {
-          lng: sw.lng + lngSpan * (Math.random() * 0.7),
-          lat: ne.lat - latSpan * (Math.random() * 0.7),
-          count: i * (Math.random() * 10),
-        };
-        arr.push(a);
-      }
-      this.heatmapOverlay.setDataSet({ data: arr, max: 100 });
-
-      this.heatmapOverlay.setOptions({
-        gradient: {
-          0.05: 'blue',
-          0.2: 'rgb(117,211,248)',
-          0.5: 'rgb(0, 255, 0)',
-          0.7: '#ffea00',
-          1.0: 'red',
-        },
-      });
-      this.heatmapOverlay.show();
-    },
   },
 };
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
+.cover-text {
+  display: inline-block;
+  position: absolute;
+  z-index: 10;
+  height: 35px;
+  line-height: 35px;
+  font-size: 13px;
+  width: 100px;
+}
 .iconfont {
   color: #0095ff;
   margin-right: 10px;
@@ -385,13 +272,15 @@ export default {
   padding: 0px;
 }
 .map-select .el-card__body {
-  width: 400px;
-  padding: 5px 0px;
+  width: 380px;
+  padding: 0px;
+  height: 320px;
+  overflow-y: auto;
   box-sizing: content-box;
   margin-left: 12px;
 }
 .map-select .el-card__header {
-  padding: 0px 7px;
+  padding: 0px 5px;
 }
 .map-select .el-scrollbar__wrap {
   max-height: 600px;
@@ -405,7 +294,6 @@ export default {
 .select-tip div {
   padding: 0px 5px;
   border-bottom: 1px solid #dadada;
-  cursor: auto;
 }
 .select-tip .history {
   overflow: hidden;
@@ -414,7 +302,7 @@ export default {
 .select-tip .history span {
   padding: 0px 5px;
   float: left;
-  color: #3d6dcc;
+  color: #428bca;
   height: 28px;
   line-height: 28px;
 }
@@ -423,22 +311,19 @@ export default {
   font-size: 13px;
 }
 .select-content {
-  height: 240px;
-  overflow-y: auto;
-}
-.select-content div {
   padding: 2px 5px;
   overflow: hidden;
 }
 .select-content .s-title {
   font-weight: bold;
   float: left;
-  color: #3d6dcc;
 }
 .select-content .s-txt {
   padding: 0px 5px;
   float: left;
-  color: #3d6dcc;
-  font-size: 12px;
+}
+.el-input__suffix {
+  /* z-index: 99; */
 }
 </style>
+

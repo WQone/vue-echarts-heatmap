@@ -13,7 +13,15 @@ const MP = (ak) => {
       scriptDrawingManager.type = 'text/javascript';
       scriptDrawingManager.src = './static/DrawingManager_min.js';
       scriptDrawingManager.onload = () => {
-        resolve(BMap);
+        // 增
+        const scriptHeatmap = document.createElement('script');
+        scriptHeatmap.type = 'text/javascript';
+        scriptHeatmap.src = './static/Heatmap_min.js';
+        scriptHeatmap.onload = () => {
+          resolve(BMap);
+        };
+        scriptHeatmap.onerror = reject;
+        document.head.appendChild(scriptHeatmap);
       };
       scriptDrawingManager.onerror = reject;
       document.head.appendChild(scriptDrawingManager);
