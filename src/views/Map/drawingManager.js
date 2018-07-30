@@ -15,11 +15,9 @@ const init = (map) => {
     enableDrawingTool: true, // 是否显示工具栏
     drawingToolOptions: {
       anchor: BMAP_ANCHOR_TOP_RIGHT, //位置
-			offset: new BMap.Size(5, 5), //偏离值
-			scale: 0.8, //工具栏缩放比例
-			drawingModes: [
-				BMAP_DRAWING_CIRCLE
-			]
+      offset: new BMap.Size(5, 5), //偏离值
+      scale: 0.8, //工具栏缩放比例
+      drawingModes: [BMAP_DRAWING_CIRCLE, BMAP_DRAWING_POLYGON],
     },
     circleOptions: styleOptions, // 圆的样式
     polylineOptions: styleOptions, // 线的样式

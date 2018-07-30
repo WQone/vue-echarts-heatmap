@@ -9,22 +9,28 @@ const MP = (ak) => {
     document.head.appendChild(scriptMap);
 
     window.onload = () => {
-      const scriptDrawingManager = document.createElement('script');
-      scriptDrawingManager.type = 'text/javascript';
-      scriptDrawingManager.src = './static/DrawingManager_min.js';
-      scriptDrawingManager.onload = () => {
-        // 增
-        const scriptHeatmap = document.createElement('script');
-        scriptHeatmap.type = 'text/javascript';
-        scriptHeatmap.src = './static/Heatmap_min.js';
-        scriptHeatmap.onload = () => {
+      let index = 0;
+      const jsSrc = [
+        './static/DrawingManager_min.js',
+        './static/Heatmap_min.js',
+        './static/GeoUtils_min.js',
+      ];
+      const callback = () => {
+        index += 1;
+        if (index === jsSrc.length) {
           resolve(BMap);
-        };
-        scriptHeatmap.onerror = reject;
-        document.head.appendChild(scriptHeatmap);
+        }
       };
-      scriptDrawingManager.onerror = reject;
-      document.head.appendChild(scriptDrawingManager);
+
+      for (let i = 0; i < jsSrc.length; i += 1) {
+        const src = jsSrc[i];
+        const $script = document.createElement('script');
+        $script.type = 'text/javascript';
+        $script.src = src;
+        $script.onerror = reject;
+        $script.onload = callback;
+        document.head.appendChild($script);
+      }
     };
   });
 };
