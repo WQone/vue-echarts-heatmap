@@ -348,7 +348,7 @@ export default {
         },
         circleOptions: getOptions(), // 圆的样式
         // polylineOptions: styleOptionsLine, // 线的样式
-        polygonOptions: getOptions(true), // 多边形的样式
+        polygonOptions: getOptions(false), // 多边形的样式
         // rectangleOptions: styleOptions, // 矩形的样式
       });
       this.drawingManager.addEventListener('circlecomplete', this.circlecomplete);
