@@ -118,6 +118,7 @@ export default {
     return {
       map: '',
       heatmapOverlay: '',
+      markerClusterer: null, //  点聚合
       drawingManager: null,
       markerArr: [], // 标注点数组
       ak: '1y2hRgyFgIGGkM9m9vmrmsLGsHvwnsUU',
@@ -206,36 +207,50 @@ export default {
       const circle = new BMap.Circle(e.getCenter(), e.getRadius(), {
         strokeWeight: e.getStrokeWeight(),
       });
-      const arr = [];
+
+      //  标点
+      this.markerClusterer.clearMarkers();
       for (let i = 0; i < this.markerArr.length; i += 1) {
         const item = this.markerArr[i];
         if (BMapLib.GeoUtils.isPointInCircle(item.point, circle)) {
-          this.map.addOverlay(item);
-          arr.push(dataList[i]);
-        } else {
-          this.map.removeOverlay(item);
+          this.markerClusterer.addMarker(item);
+        }
+      }
+
+      //  热力图
+      const arr = [];
+      for (let i = 0; i < dataList.length; i += 1) {
+        const item = dataList[i];
+        if (BMapLib.GeoUtils.isPointInCircle(new BMap.Point(item.lng, item.lat), circle)) {
+          arr.push(item);
         }
       }
       this.heatmapOverlay.setDataSet({ data: arr, max: 100 });
     },
     //  多边形回调
     polygoncomplete(e) {
-      console.log(this.map, this.drawingManager);
-      console.log(e.getPath());
       this.map.removeOverlay(this.overlay);
       this.overlay = e;
 
       const polygon = new BMap.Polygon(e.getPath(), {
         strokeWeight: e.getStrokeWeight(),
       });
-      const arr = [];
+
+      //  标点
+      this.markerClusterer.clearMarkers();
       for (let i = 0; i < this.markerArr.length; i += 1) {
         const item = this.markerArr[i];
         if (BMapLib.GeoUtils.isPointInPolygon(item.point, polygon)) {
-          this.map.addOverlay(item);
-          arr.push(dataList[i]);
-        } else {
-          this.map.removeOverlay(item);
+          this.markerClusterer.addMarker(item);
+        }
+      }
+
+      //  热力图
+      const arr = [];
+      for (let i = 0; i < dataList.length; i += 1) {
+        const item = dataList[i];
+        if (BMapLib.GeoUtils.isPointInPolygon(new BMap.Point(item.lng, item.lat), polygon)) {
+          arr.push(item);
         }
       }
       this.heatmapOverlay.setDataSet({ data: arr, max: 100 });
@@ -258,11 +273,11 @@ export default {
           title: item.count,
         }); // 创建标注
         pointArray[i] = new BMap.Point(item.lng, item.lat);
-        this.map.addOverlay(marker); // 将标注添加到地图中
+        // this.map.addOverlay(marker); // 将标注添加到地图中
         this.addClickHandler(item.count, marker);
         this.markerArr.push(marker);
       }
-      // const markerClusterer = new BMapLib.MarkerClusterer(this.map, { markers: this.markerArr }); // 点聚合
+      this.markerClusterer = new BMapLib.MarkerClusterer(this.map, { markers: this.markerArr }); // 点聚合
 
       // this.map.setViewport(pointArray); // 让所有点在视野范围内
     },
@@ -433,7 +448,7 @@ export default {
 .tip-img img {
   height: 100%;
 }
-.map-date{
+.map-date {
   position: absolute;
   z-index: 10;
   left: 470px;
