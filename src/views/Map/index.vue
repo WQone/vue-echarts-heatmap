@@ -94,8 +94,8 @@ export default {
         this.checkhHtml5();
 
         this.drawingManager = drawingManager.init(this.map);
-
-        this.drawingManager.addEventListener('overlaycomplete', this.overlaycomplete);
+        this.drawingManager.addEventListener('circlecomplete', this.circlecomplete);
+        this.drawingManager.addEventListener('polygoncomplete', this.polygoncomplete);
 
         // 添加定位控件
         // let geolocationControl = new BMap.GeolocationControl();
@@ -136,6 +136,7 @@ export default {
       numShow: true,
       city: '绵阳市',
       drawingManager: null,
+      overlay: [], //  圆形选框/自定义选框
     };
   },
   methods: {
@@ -190,9 +191,41 @@ export default {
       console.log(val, this.city);
       this.city = val;
     },
-    //  操作百度地图工具回调
-    overlaycomplete(e) {
-      console.log('e', e);
+    //  画圆回调
+    circlecomplete(e) {
+      this.map.removeOverlay(this.overlay);
+      this.overlay = e;
+
+      const circle = new BMap.Circle(e.getCenter(), e.getRadius(), {
+        strokeWeight: e.getStrokeWeight(),
+      });
+
+      for (let i = 0; i < this.markerArr.length; i += 1) {
+        const item = this.markerArr[i];
+        if (BMapLib.GeoUtils.isPointInCircle(item.point, circle)) {
+          this.map.addOverlay(item);
+        } else {
+          this.map.removeOverlay(item);
+        }
+      }
+    },
+    //  多边形回调
+    polygoncomplete(e) {
+      this.map.removeOverlay(this.overlay);
+      this.overlay = e;
+
+      const polygon = new BMap.Polygon(e.getPath(), {
+        strokeWeight: e.getStrokeWeight(),
+      });
+
+      for (let i = 0; i < this.markerArr.length; i += 1) {
+        const item = this.markerArr[i];
+        if (BMapLib.GeoUtils.isPointInPolygon(item.point, polygon)) {
+          this.map.addOverlay(item);
+        } else {
+          this.map.removeOverlay(item);
+        }
+      }
     },
     // 地图定位事件
     locationSuccess() {
