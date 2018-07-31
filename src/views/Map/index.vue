@@ -56,6 +56,10 @@
         </el-option>
       </el-select>
     </div>
+    <div class="map-date">
+      <Date></Date>
+    </div>
+    <div class="tip-img"><img src="../../assets/img/density.png" /></div>
   </div>
 </template>
 
@@ -64,15 +68,19 @@
 /* global BMapLib */
 
 import MP from './map';
-import drawingManager from './drawingManager';
+import dataList from './data';
+import Date from './../../components/Date';
 
 export default {
   name: 'Map',
+  components: {
+    Date,
+  },
   mounted() {
     this.$nextTick(() => {
       // 在此调用api
       MP(this.ak).then((BMap) => {
-        this.map = new BMap.Map('allmap', { enableMapClick: false });
+        this.map = new BMap.Map('allmap', { enableMapClick: false }); // 构造底图时，关闭底图可点功能
         this.map.centerAndZoom(new BMap.Point(104.73, 31.47), 14); // 初始化地图，设置中心点坐标和地图级别
         const mapStyle = {
           // features: ['road', 'building', 'water', 'land'], // 隐藏地图上的poi
@@ -80,7 +88,15 @@ export default {
         };
         this.map.setMapStyle(mapStyle);
         this.map.enableScrollWheelZoom(true); // 开启鼠标滚轮缩放
-
+        // 自定义图片控件
+        // eslint-disable-next-line
+        // const myControl = new BMap.CopyrightControl({ anchor: BMAP_ANCHOR_BOTTOM_RIGHT }); // 设置版权控件位置
+        // this.map.addControl(myControl); // 添加版权控件
+        // myControl.addCopyright({
+        //   id: 1,
+        //   content: "<a href='#' style='font-size:100px;background:yellow'>我是自定义版权控件呀</a>",
+        //   bounds: this.map.getBounds(),
+        // });
         this.map.addControl(
           // 平移缩放控件
           new BMap.NavigationControl({
@@ -92,18 +108,9 @@ export default {
           }),
         );
         this.checkhHtml5();
-
-        this.drawingManager = drawingManager.init(this.map);
-        this.drawingManager.addEventListener('circlecomplete', this.circlecomplete);
-        this.drawingManager.addEventListener('polygoncomplete', this.polygoncomplete);
-
-        // 添加定位控件
-        // let geolocationControl = new BMap.GeolocationControl();
-        // geolocationControl.addEventListener('locationSuccess', this.locationSuccess);
-        // map.addControl(geolocationControl);
-
         this.markerShow(); // 标注
         this.heatmapShow(); // 热力图
+        this.drawingShow(); // 画图功能
       });
     });
   },
@@ -111,6 +118,7 @@ export default {
     return {
       map: '',
       heatmapOverlay: '',
+      drawingManager: null,
       markerArr: [], // 标注点数组
       ak: '1y2hRgyFgIGGkM9m9vmrmsLGsHvwnsUU',
       hotList: ['常驻人口', '工作人口', '实时人口'],
@@ -135,7 +143,6 @@ export default {
       hotShow: true,
       numShow: true,
       city: '绵阳市',
-      drawingManager: null,
       overlay: [], //  圆形选框/自定义选框
     };
   },
@@ -199,71 +206,65 @@ export default {
       const circle = new BMap.Circle(e.getCenter(), e.getRadius(), {
         strokeWeight: e.getStrokeWeight(),
       });
-
+      const arr = [];
       for (let i = 0; i < this.markerArr.length; i += 1) {
         const item = this.markerArr[i];
         if (BMapLib.GeoUtils.isPointInCircle(item.point, circle)) {
           this.map.addOverlay(item);
+          arr.push(dataList[i]);
         } else {
           this.map.removeOverlay(item);
         }
       }
+      this.heatmapOverlay.setDataSet({ data: arr, max: 100 });
     },
     //  多边形回调
     polygoncomplete(e) {
+      console.log(this.map, this.drawingManager);
+      console.log(e.getPath());
       this.map.removeOverlay(this.overlay);
       this.overlay = e;
 
       const polygon = new BMap.Polygon(e.getPath(), {
         strokeWeight: e.getStrokeWeight(),
       });
-
+      const arr = [];
       for (let i = 0; i < this.markerArr.length; i += 1) {
         const item = this.markerArr[i];
         if (BMapLib.GeoUtils.isPointInPolygon(item.point, polygon)) {
           this.map.addOverlay(item);
+          arr.push(dataList[i]);
         } else {
           this.map.removeOverlay(item);
         }
       }
-    },
-    // 地图定位事件
-    locationSuccess() {
-      // 定位成功事件
-      // let address = '';
-      // address += e.addressComponent.province;
-      // address += e.addressComponent.city;
-      // address += e.addressComponent.district;
-      // address += e.addressComponent.street;
-      // address += e.addressComponent.streetNumber;
-      // console.log('当前定位地址为：' + e.addressComponent.province);
+      this.heatmapOverlay.setDataSet({ data: arr, max: 100 });
     },
     // 随机向地图添加25个标注
     markerShow() {
-      const bounds = this.map.getBounds();
-      const sw = bounds.getSouthWest();
-      const ne = bounds.getNorthEast();
-      const lngSpan = Math.abs(sw.lng - ne.lng);
-      const latSpan = Math.abs(ne.lat - sw.lat);
       this.markerArr = [];
       const pointArray = [];
-      for (let i = 0; i < 25; i += 1) {
-        const marker = new BMap.Marker(
-          new BMap.Point(
-            sw.lng + lngSpan * (Math.random() * 0.7),
-            ne.lat - latSpan * (Math.random() * 0.7),
-          ),
-        ); // 创建标注
-        pointArray[i] = new BMap.Point(
-          sw.lng + lngSpan * (Math.random() * 0.7),
-          ne.lat - latSpan * (Math.random() * 0.7),
-        );
-        const content = `${i}`;
+      for (let i = 0; i < dataList.length; i += 1) {
+        const item = dataList[i];
+        const marker = new BMap.Marker(new BMap.Point(item.lng, item.lat), {
+          // 设置Marker的icon属性为Symbol-样式与偏移
+          // eslint-disable-next-line
+          icon: new BMap.Symbol(BMap_Symbol_SHAPE_POINT, {
+            scale: 1, // 图标缩放大小
+            fillColor: 'red', // 填充颜色
+            fillOpacity: 0.8, // 填充透明度
+          }),
+          // 设置标注的标题，当鼠标移至标注上时显示此标题
+          title: item.count,
+        }); // 创建标注
+        pointArray[i] = new BMap.Point(item.lng, item.lat);
         this.map.addOverlay(marker); // 将标注添加到地图中
-        this.addClickHandler(content, marker);
+        this.addClickHandler(item.count, marker);
         this.markerArr.push(marker);
       }
-      this.map.setViewport(pointArray); // 让所有点在视野范围内
+      // const markerClusterer = new BMapLib.MarkerClusterer(this.map, { markers: this.markerArr }); // 点聚合
+
+      // this.map.setViewport(pointArray); // 让所有点在视野范围内
     },
     // 标注点击事件
     addClickHandler(content, marker) {
@@ -274,35 +275,21 @@ export default {
     // 标注信息窗口
     openInfo(content, e) {
       const opts = {
-        width: 80, // 信息窗口宽度
-        height: 40, // 信息窗口高度
+        width: 50, // 信息窗口宽度
+        height: 10, // 信息窗口高度
         title: '信息窗口', // 信息窗口标题
         enableMessage: true, // 设置允许信息窗发送短息
       };
       const p = e.target;
       const point = new BMap.Point(p.getPosition().lng, p.getPosition().lat);
-      const infoWindow = new BMap.InfoWindow(content, opts); // 创建信息窗口对象
+      const infoWindow = new BMap.InfoWindow(content.toString(), opts); // 创建信息窗口对象
       this.map.openInfoWindow(infoWindow, point); // 开启信息窗口
     },
     // 加载热力图
     heatmapShow() {
       this.heatmapOverlay = new BMapLib.HeatmapOverlay({ radius: 20 });
       this.map.addOverlay(this.heatmapOverlay);
-      const bounds = this.map.getBounds();
-      const sw = bounds.getSouthWest();
-      const ne = bounds.getNorthEast();
-      const lngSpan = Math.abs(sw.lng - ne.lng);
-      const latSpan = Math.abs(ne.lat - sw.lat);
-      const arr = [];
-      for (let i = 0; i < 500; i += 1) {
-        const a = {
-          lng: sw.lng + lngSpan * (Math.random() * 0.7),
-          lat: ne.lat - latSpan * (Math.random() * 0.7),
-          count: i * (Math.random() * 10),
-        };
-        arr.push(a);
-      }
-      this.heatmapOverlay.setDataSet({ data: arr, max: 100 });
+      this.heatmapOverlay.setDataSet({ data: dataList, max: 100 });
 
       this.heatmapOverlay.setOptions({
         gradient: {
@@ -314,6 +301,43 @@ export default {
         },
       });
       this.heatmapOverlay.show();
+    },
+    // 加载画图功能
+    drawingShow() {
+      // const myDrag = new BMapLib.RectangleZoom(this.map, {
+      //   followText: '拖拽鼠标进行操作',
+      // });
+      // myDrag.open(); //开启拉框放大
+      const getOptions = (Edit) => {
+        const styleOptions = {
+          strokeColor: '#9B506F', // 边线颜色。
+          fillColor: '#9B506F', // 填充颜色。当参数为空时，圆形将没有填充效果。
+          strokeWeight: 3, // 边线的宽度，以像素为单位。
+          strokeOpacity: 0.8, // 边线透明度，取值范围0 - 1。
+          fillOpacity: 0.3, // 填充的透明度，取值范围0 - 1。
+          strokeStyle: 'solid', // 边线的样式，solid或dashed。
+          enableEditing: Edit,
+        };
+        return styleOptions;
+      };
+      this.drawingManager = new BMapLib.DrawingManager(this.map, {
+        isOpen: false, // 是否开启绘制模式
+        enableDrawingTool: true, // 是否显示工具栏
+        drawingToolOptions: {
+          // eslint-disable-next-line
+          anchor: BMAP_ANCHOR_TOP_RIGHT, // 位置
+          offset: new BMap.Size(5, 5), // 偏离值
+          scale: 0.8, // 工具栏缩放比例
+          // eslint-disable-next-line
+          drawingModes: [BMAP_DRAWING_CIRCLE, BMAP_DRAWING_POLYGON],
+        },
+        circleOptions: getOptions(), // 圆的样式
+        // polylineOptions: styleOptionsLine, // 线的样式
+        polygonOptions: getOptions(true), // 多边形的样式
+        // rectangleOptions: styleOptions, // 矩形的样式
+      });
+      this.drawingManager.addEventListener('circlecomplete', this.circlecomplete);
+      this.drawingManager.addEventListener('polygoncomplete', this.polygoncomplete);
     },
   },
 };
@@ -397,6 +421,23 @@ export default {
 }
 .card-list span {
   margin-left: 60px;
+}
+.tip-img {
+  position: absolute;
+  z-index: 10;
+  left: 320px;
+  bottom: 6px;
+  width: auto;
+  height: 60px;
+}
+.tip-img img {
+  height: 100%;
+}
+.map-date{
+  position: absolute;
+  z-index: 10;
+  left: 470px;
+  top: 6px;
 }
 </style>
 <style>

@@ -14,6 +14,9 @@ const MP = (ak) => {
         './static/DrawingManager_min.js',
         './static/Heatmap_min.js',
         './static/GeoUtils_min.js',
+        './static/TextIconOverlay_min.js',
+        './static/MarkerClusterer_min.js',
+        './static/RectangleZoom_min.js',
       ];
       const callback = () => {
         index += 1;
