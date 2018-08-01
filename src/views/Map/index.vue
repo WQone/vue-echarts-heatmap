@@ -120,9 +120,9 @@ export default {
         this.heatmapShow(); // 热力图
         this.drawingShow(); // 画图功能
 
-        this.map.addEventListener('click', (e) => {
-          console.log('click', e);
-        });
+        this.initClick(); //  初始化绘制工具鼠标点击事件
+
+        this.map.addEventListener('click', this.mapClick);
         this.map.addEventListener('mousemove', this.mapMouseMove);
       });
     });
@@ -163,6 +163,17 @@ export default {
       mousePoint: { lng: 0, lat: 0 }, //  鼠标移动坐标
       circleLabel: null, //  绘制圆形标签 即半径显示
       myDrag: '',
+      tipsLabel: null, //  鼠标提示标签
+      isPolygonDraw: false, //  是否正在画多边形
+      isPolygonIndex: 0, //  画多边形路上点击了多少次
+      labelStyle: {
+        //  label样式
+        color: 'black',
+        backgroundColor: 'rgba(255,255,255,.9)',
+        padding: '5px',
+        border: 'none',
+        zIndex: 999,
+      },
     };
   },
   methods: {
@@ -211,25 +222,23 @@ export default {
             const item = this.markerArr[i];
             if (this.overlayTools.length === 0) {
               this.markerClusterer.addMarker(item);
+            } else if (this.overlayTools[0].type === 'polygon') {
+              const polygon = new BMap.Polygon(this.overlayTools[0].val.getPath(), {
+                strokeWeight: this.overlayTools[0].val.getStrokeWeight(),
+              });
+              if (BMapLib.GeoUtils.isPointInPolygon(item.point, polygon)) {
+                this.markerClusterer.addMarker(item);
+              }
             } else {
-              if (this.overlayTools[0].type === 'polygon') {
-                const polygon = new BMap.Polygon(this.overlayTools[0].val.getPath(), {
+              const circle = new BMap.Circle(
+                this.overlayTools[0].val.getCenter(),
+                this.overlayTools[0].val.getRadius(),
+                {
                   strokeWeight: this.overlayTools[0].val.getStrokeWeight(),
-                });
-                if (BMapLib.GeoUtils.isPointInPolygon(item.point, polygon)) {
-                  this.markerClusterer.addMarker(item);
-                }
-              } else {
-                const circle = new BMap.Circle(
-                  this.overlayTools[0].val.getCenter(),
-                  this.overlayTools[0].val.getRadius(),
-                  {
-                    strokeWeight: this.overlayTools[0].val.getStrokeWeight(),
-                  },
-                );
-                if (BMapLib.GeoUtils.isPointInCircle(item.point, circle)) {
-                  this.markerClusterer.addMarker(item);
-                }
+                },
+              );
+              if (BMapLib.GeoUtils.isPointInCircle(item.point, circle)) {
+                this.markerClusterer.addMarker(item);
               }
             }
           }
@@ -275,6 +284,7 @@ export default {
         return;
       }
 
+      this.map.removeOverlay(this.tipsLabel);
       this.map.removeOverlay(this.overlay);
       this.overlay = e;
 
@@ -314,19 +324,15 @@ export default {
           position: new BMap.Point(this.mousePoint.lng, this.mousePoint.lat),
         },
       ); // label的位置
-      this.circleLabel.setStyle({
-        color: 'black',
-        backgroundColor: 'rgba(255,255,255,.9)',
-        padding: '5px',
-        border: 'none',
-        zIndex: 999,
-      }); // 为label添加鼠标提示
+      this.circleLabel.setStyle(this.labelStyle); // 为label添加鼠标提示
       this.map.addOverlay(this.circleLabel); // 把label添加到地图上
     },
     //  多边形回调
     polygoncomplete(e) {
-      console.log(e);
+      this.isPolygonDraw = true;
+      this.isPolygonIndex = 0;
       this.map.removeOverlay(this.circleLabel);
+      this.map.removeOverlay(this.tipsLabel);
 
       console.log('polygoncomplete', e);
       this.map.removeOverlay(this.overlay);
@@ -437,7 +443,7 @@ export default {
         strokeOpacity: 0.8, // 边线透明度，取值范围0 - 1。
         fillOpacity: 0.3, // 填充的透明度，取值范围0 - 1。
         strokeStyle: 'dashed', // 边线的样式，solid或dashed。
-        enableEditing: true,
+        enableEditing: false,
       };
 
       this.drawingManager = new BMapLib.DrawingManager(this.map, {
@@ -489,10 +495,10 @@ export default {
       markerMenu.addItem(new BMap.MenuItem('保存', saveMarker.bind(overlay)));
       overlay.addContextMenu(markerMenu);
 
-      this.myDrag = new BMapLib.RectangleZoom(this.map, {
-        followText: '拖拽鼠标进行操作',
-      });
-      this.myDrag.open(); // 开启拉框放大
+      // this.myDrag = new BMapLib.RectangleZoom(this.map, {
+      //   followText: '拖拽鼠标进行操作',
+      // });
+      // this.myDrag.open(); // 开启拉框放大
     },
     overlaycomplete(e) {
       console.log(444, e.drawingMode);
@@ -503,13 +509,57 @@ export default {
       for (let i = 0; i < this.overlayTools.length; i += 1) {
         this.map.removeOverlay(this.overlayTools[i].val);
       }
-      // this.map.clearOverlays();
       this.markerShow(); // 标注
       this.heatmapShow(); // 热力图
+      this.map.removeOverlay(this.circleLabel);
     },
     //  地图移动事件
     mapMouseMove(e) {
       this.mousePoint = e.point;
+      if (this.tipsLabel) {
+        this.tipsLabel.setPosition(new BMap.Point(this.mousePoint.lng, this.mousePoint.lat));
+      }
+    },
+    //  初始化绘制工具鼠标点击事件
+    initClick() {
+      //  初始化圆形
+      const $BMapLibCircle = document.querySelector('.BMapLib_box.BMapLib_circle');
+      $BMapLibCircle.onclick = (e) => {
+        this.tipsLabel = new BMap.Label(
+          '选中一点按紧拖放进行画图', // 为lable填写内容
+          {
+            offset: new BMap.Size(0, 0), // label的偏移量，为了让label的中心显示在点上
+            position: new BMap.Point(this.mousePoint.lng, this.mousePoint.lat),
+          },
+        ); // label的位置
+        this.tipsLabel.setStyle(this.labelStyle); // 为label添加鼠标提示
+        this.map.addOverlay(this.tipsLabel); // 把label添加到地图上
+      };
+
+      //  初始化多边形的
+      const $BMapLibPolygon = document.querySelector('.BMapLib_box.BMapLib_polygon');
+      $BMapLibPolygon.onclick = (e) => {
+        this.isPolygonDraw = true;
+        this.isPolygonIndex = 0;
+        this.tipsLabel = new BMap.Label(
+          '点击开始绘制区域', // 为lable填写内容
+          {
+            offset: new BMap.Size(0, 0), // label的偏移量，为了让label的中心显示在点上
+            position: new BMap.Point(this.mousePoint.lng, this.mousePoint.lat),
+          },
+        ); // label的位置
+        this.tipsLabel.setStyle(this.labelStyle); // 为label添加鼠标提示
+        this.map.addOverlay(this.tipsLabel); // 把label添加到地图上
+      };
+    },
+    //  监听地图点击事件
+    mapClick(e) {
+      this.isPolygonIndex += 1;
+      if (this.tipsLabel && this.isPolygonIndex === 1) {
+        this.tipsLabel.setContent('点击继续绘制');
+      } else if (this.tipsLabel && this.isPolygonIndex) {
+        this.tipsLabel.setContent('双击完成绘制');
+      }
     },
     // 日期搜索值
     selectValue(val) {
