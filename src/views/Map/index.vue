@@ -28,6 +28,9 @@
             <i class="icon iconfont icon-dangqianweizhi1" :style="numActive === item ? '':'color:white;'"></i>{{item}}</span>
         </li>
       </ul>
+
+      <el-button class="btn-clear" @click="btnClear">清除</el-button>
+
     </div>
 
     <div id="allmap" class="allmap"></div>
@@ -111,6 +114,11 @@ export default {
         this.markerShow(); // 标注
         this.heatmapShow(); // 热力图
         this.drawingShow(); // 画图功能
+
+        this.map.addEventListener('click', (e) => {
+          console.log('click', e);
+        });
+        this.map.addEventListener('mousemove', this.mapMouseMove);
       });
     });
   },
@@ -118,6 +126,7 @@ export default {
     return {
       map: '',
       heatmapOverlay: '',
+      markerClusterer: null, //  点聚合
       drawingManager: null,
       markerArr: [], // 标注点数组
       ak: '1y2hRgyFgIGGkM9m9vmrmsLGsHvwnsUU',
@@ -144,6 +153,8 @@ export default {
       numShow: true,
       city: '绵阳市',
       overlay: [], //  圆形选框/自定义选框
+      mousePoint: { lng: 0, lat: 0 }, //  鼠标移动坐标
+      circleLabel: null, //  绘制圆形标签 即半径显示
     };
   },
   methods: {
@@ -200,42 +211,85 @@ export default {
     },
     //  画圆回调
     circlecomplete(e) {
+      if (!e.getRadius()) {
+        this.drawingManager.close();
+        return;
+      }
+
       this.map.removeOverlay(this.overlay);
       this.overlay = e;
 
       const circle = new BMap.Circle(e.getCenter(), e.getRadius(), {
         strokeWeight: e.getStrokeWeight(),
       });
-      const arr = [];
+
+      //  标点
+      this.markerClusterer.clearMarkers();
       for (let i = 0; i < this.markerArr.length; i += 1) {
         const item = this.markerArr[i];
         if (BMapLib.GeoUtils.isPointInCircle(item.point, circle)) {
-          this.map.addOverlay(item);
-          arr.push(dataList[i]);
-        } else {
-          this.map.removeOverlay(item);
+          this.markerClusterer.addMarker(item);
+        }
+      }
+
+      //  热力图
+      const arr = [];
+      for (let i = 0; i < dataList.length; i += 1) {
+        const item = dataList[i];
+        if (BMapLib.GeoUtils.isPointInCircle(new BMap.Point(item.lng, item.lat), circle)) {
+          arr.push(item);
         }
       }
       this.heatmapOverlay.setDataSet({ data: arr, max: 100 });
+
+      this.drawingManager.close();
+
+      //  画结果的半径标签
+      this.map.removeOverlay(this.circleLabel);
+      this.circleLabel = new BMap.Label(
+        `${(e.getRadius() / 1000).toFixed(1)} KM`, // 为lable填写内容
+        {
+          offset: new BMap.Size(0, 0), // label的偏移量，为了让label的中心显示在点上
+          position: new BMap.Point(this.mousePoint.lng, this.mousePoint.lat),
+        },
+      ); // label的位置
+      this.circleLabel.setStyle({
+        color: '#fff',
+        backgroundColor: 'rgba(0,0,0,.5)',
+        padding: '5px',
+        border: 'none',
+        zIndex: 999,
+      }); // 为label添加鼠标提示
+      this.map.addOverlay(this.circleLabel); // 把label添加到地图上
     },
     //  多边形回调
     polygoncomplete(e) {
-      console.log(this.map, this.drawingManager);
-      console.log(e.getPath());
+      this.map.removeOverlay(this.circleLabel);
+
+      console.log('polygoncomplete', e);
       this.map.removeOverlay(this.overlay);
       this.overlay = e;
 
       const polygon = new BMap.Polygon(e.getPath(), {
         strokeWeight: e.getStrokeWeight(),
       });
-      const arr = [];
+      e.setStrokeStyle('solid');
+
+      //  标点
+      this.markerClusterer.clearMarkers();
       for (let i = 0; i < this.markerArr.length; i += 1) {
         const item = this.markerArr[i];
         if (BMapLib.GeoUtils.isPointInPolygon(item.point, polygon)) {
-          this.map.addOverlay(item);
-          arr.push(dataList[i]);
-        } else {
-          this.map.removeOverlay(item);
+          this.markerClusterer.addMarker(item);
+        }
+      }
+
+      //  热力图
+      const arr = [];
+      for (let i = 0; i < dataList.length; i += 1) {
+        const item = dataList[i];
+        if (BMapLib.GeoUtils.isPointInPolygon(new BMap.Point(item.lng, item.lat), polygon)) {
+          arr.push(item);
         }
       }
       this.heatmapOverlay.setDataSet({ data: arr, max: 100 });
@@ -258,11 +312,11 @@ export default {
           title: item.count,
         }); // 创建标注
         pointArray[i] = new BMap.Point(item.lng, item.lat);
-        this.map.addOverlay(marker); // 将标注添加到地图中
+        // this.map.addOverlay(marker); // 将标注添加到地图中
         this.addClickHandler(item.count, marker);
         this.markerArr.push(marker);
       }
-      // const markerClusterer = new BMapLib.MarkerClusterer(this.map, { markers: this.markerArr }); // 点聚合
+      this.markerClusterer = new BMapLib.MarkerClusterer(this.map, { markers: this.markerArr }); // 点聚合
 
       // this.map.setViewport(pointArray); // 让所有点在视野范围内
     },
@@ -308,18 +362,23 @@ export default {
       //   followText: '拖拽鼠标进行操作',
       // });
       // myDrag.open(); //开启拉框放大
-      const getOptions = (Edit) => {
-        const styleOptions = {
-          strokeColor: '#9B506F', // 边线颜色。
-          fillColor: '#9B506F', // 填充颜色。当参数为空时，圆形将没有填充效果。
-          strokeWeight: 3, // 边线的宽度，以像素为单位。
-          strokeOpacity: 0.8, // 边线透明度，取值范围0 - 1。
-          fillOpacity: 0.3, // 填充的透明度，取值范围0 - 1。
-          strokeStyle: 'solid', // 边线的样式，solid或dashed。
-          enableEditing: Edit,
-        };
-        return styleOptions;
+      const circleOptions = {
+        strokeColor: '#9B506F', // 边线颜色。
+        fillColor: '#9B506F', // 填充颜色。当参数为空时，圆形将没有填充效果。
+        strokeWeight: 3, // 边线的宽度，以像素为单位。
+        strokeOpacity: 0.8, // 边线透明度，取值范围0 - 1。
+        fillOpacity: 0.3, // 填充的透明度，取值范围0 - 1。
+        strokeStyle: 'solid', // 边线的样式，solid或dashed。
       };
+      const polygonOptions = {
+        strokeColor: '#9B506F', // 边线颜色。
+        fillColor: '#9B506F', // 填充颜色。当参数为空时，圆形将没有填充效果。
+        strokeWeight: 3, // 边线的宽度，以像素为单位。
+        strokeOpacity: 0.8, // 边线透明度，取值范围0 - 1。
+        fillOpacity: 0.3, // 填充的透明度，取值范围0 - 1。
+        strokeStyle: 'dashed', // 边线的样式，solid或dashed。
+      };
+
       this.drawingManager = new BMapLib.DrawingManager(this.map, {
         isOpen: false, // 是否开启绘制模式
         enableDrawingTool: true, // 是否显示工具栏
@@ -331,13 +390,23 @@ export default {
           // eslint-disable-next-line
           drawingModes: [BMAP_DRAWING_CIRCLE, BMAP_DRAWING_POLYGON],
         },
-        circleOptions: getOptions(), // 圆的样式
+        circleOptions, // 圆的样式
         // polylineOptions: styleOptionsLine, // 线的样式
-        polygonOptions: getOptions(true), // 多边形的样式
+        polygonOptions, // 多边形的样式
         // rectangleOptions: styleOptions, // 矩形的样式
       });
       this.drawingManager.addEventListener('circlecomplete', this.circlecomplete);
       this.drawingManager.addEventListener('polygoncomplete', this.polygoncomplete);
+    },
+    btnClear() {
+      this.map.clearOverlays();
+
+      this.markerShow(); // 标注
+      this.heatmapShow(); // 热力图
+    },
+    //  地图移动事件
+    mapMouseMove(e) {
+      this.mousePoint = e.point;
     },
   },
 };
@@ -345,6 +414,10 @@ export default {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
+.btn-clear {
+  width: 100%;
+  margin-top: 20px;
+}
 .iconfont {
   color: #0095ff;
   margin-right: 10px;
@@ -433,7 +506,7 @@ export default {
 .tip-img img {
   height: 100%;
 }
-.map-date{
+.map-date {
   position: absolute;
   z-index: 10;
   left: 470px;
