@@ -33,7 +33,7 @@
 
     </div>
 
-    <div id="allmap" class="allmap"></div>
+    <div id="allmap" class="allmap" :style="mapWidth"></div>
 
     <div class="map-button">
       <el-select :value="city" popper-class="map-select">
@@ -60,7 +60,7 @@
       </el-select>
     </div>
     <div class="map-date">
-      <Date></Date>
+      <Date @selectValue="selectValue"></Date>
     </div>
     <div class="tip-img"><img src="../../assets/img/density.png" /></div>
   </div>
@@ -78,6 +78,11 @@ export default {
   name: 'Map',
   components: {
     Date,
+  },
+  created() {
+    // window.onresize = () => {
+    //   this.mapWidth = `width:${window.innerWidth - 300}px;`;
+    // };
   },
   mounted() {
     this.$nextTick(() => {
@@ -124,11 +129,13 @@ export default {
   },
   data() {
     return {
+      mapWidth: '', // 地图宽度
       map: '',
       heatmapOverlay: '',
       markerClusterer: null, //  点聚合
       drawingManager: null,
       markerArr: [], // 标注点数组
+      overlayTools: [], // 画图工具集合
       ak: '1y2hRgyFgIGGkM9m9vmrmsLGsHvwnsUU',
       hotList: ['常驻人口', '工作人口', '实时人口'],
       numList: ['常驻人口', '工作人口', '实时人口'],
@@ -155,6 +162,7 @@ export default {
       overlay: [], //  圆形选框/自定义选框
       mousePoint: { lng: 0, lat: 0 }, //  鼠标移动坐标
       circleLabel: null, //  绘制圆形标签 即半径显示
+      myDrag: '',
     };
   },
   methods: {
@@ -194,12 +202,36 @@ export default {
       } else {
         this.numShow = !this.numShow;
         if (!this.numShow) {
-          for (let i = 0; i < this.markerArr.length; i += 1) {
-            this.map.removeOverlay(this.markerArr[i]);
-          }
+          this.markerClusterer.clearMarkers();
+          // for (let i = 0; i < this.markerArr.length; i += 1) {
+          //   this.map.removeOverlay(this.markerArr[i]);
+          // }
         } else {
           for (let i = 0; i < this.markerArr.length; i += 1) {
-            this.map.addOverlay(this.markerArr[i]);
+            const item = this.markerArr[i];
+            if (this.overlayTools.length === 0) {
+              this.markerClusterer.addMarker(item);
+            } else {
+              if (this.overlayTools[0].type === 'polygon') {
+                const polygon = new BMap.Polygon(this.overlayTools[0].val.getPath(), {
+                  strokeWeight: this.overlayTools[0].val.getStrokeWeight(),
+                });
+                if (BMapLib.GeoUtils.isPointInPolygon(item.point, polygon)) {
+                  this.markerClusterer.addMarker(item);
+                }
+              } else {
+                const circle = new BMap.Circle(
+                  this.overlayTools[0].val.getCenter(),
+                  this.overlayTools[0].val.getRadius(),
+                  {
+                    strokeWeight: this.overlayTools[0].val.getStrokeWeight(),
+                  },
+                );
+                if (BMapLib.GeoUtils.isPointInCircle(item.point, circle)) {
+                  this.markerClusterer.addMarker(item);
+                }
+              }
+            }
           }
         }
       }
@@ -208,6 +240,33 @@ export default {
     changeCity(val) {
       console.log(val, this.city);
       this.city = val;
+
+      const gc = new BMap.Geocoder();
+      gc.getPoint(
+        '四川省绵阳市江油市河口镇三千米街',
+        (res) => {
+          if (res) {
+            this.map.panTo(new BMap.Point(res.lng, res.lat));
+          } else {
+            this.$message.error('没有找到当前的区域位置，请调整后重试哦~');
+          }
+          console.log(res);
+        },
+        '四川省',
+      );
+
+      // 移动地图
+      // const bounds = this.map.getBounds();
+      // const sw = bounds.getSouthWest();
+      // const ne = bounds.getNorthEast();
+      // const lngSpan = Math.abs(sw.lng - ne.lng);
+      // const latSpan = Math.abs(ne.lat - sw.lat);
+      // this.map.panTo(
+      //   new BMap.Point(
+      //     sw.lng + lngSpan * (Math.random() * 0.7),
+      //     ne.lat - latSpan * (Math.random() * 0.7),
+      //   ),
+      // );
     },
     //  画圆回调
     circlecomplete(e) {
@@ -218,6 +277,8 @@ export default {
 
       this.map.removeOverlay(this.overlay);
       this.overlay = e;
+
+      this.saveMenu(this.overlay); // 创建右键菜单
 
       const circle = new BMap.Circle(e.getCenter(), e.getRadius(), {
         strokeWeight: e.getStrokeWeight(),
@@ -254,8 +315,8 @@ export default {
         },
       ); // label的位置
       this.circleLabel.setStyle({
-        color: '#fff',
-        backgroundColor: 'rgba(0,0,0,.5)',
+        color: 'black',
+        backgroundColor: 'rgba(255,255,255,.9)',
         padding: '5px',
         border: 'none',
         zIndex: 999,
@@ -264,11 +325,15 @@ export default {
     },
     //  多边形回调
     polygoncomplete(e) {
+      console.log(e);
       this.map.removeOverlay(this.circleLabel);
 
       console.log('polygoncomplete', e);
       this.map.removeOverlay(this.overlay);
       this.overlay = e;
+      this.overlay.disableEditing(); // 多边形不可编辑
+
+      this.saveMenu(this.overlay); // 创建右键菜单
 
       const polygon = new BMap.Polygon(e.getPath(), {
         strokeWeight: e.getStrokeWeight(),
@@ -294,7 +359,7 @@ export default {
       }
       this.heatmapOverlay.setDataSet({ data: arr, max: 100 });
     },
-    // 随机向地图添加25个标注
+    // 向地图添加标注
     markerShow() {
       this.markerArr = [];
       const pointArray = [];
@@ -309,11 +374,11 @@ export default {
             fillOpacity: 0.8, // 填充透明度
           }),
           // 设置标注的标题，当鼠标移至标注上时显示此标题
-          title: item.count,
+          title: `${item.addr}-${item.count}人`,
         }); // 创建标注
         pointArray[i] = new BMap.Point(item.lng, item.lat);
         // this.map.addOverlay(marker); // 将标注添加到地图中
-        this.addClickHandler(item.count, marker);
+        this.addClickHandler(item.count, item.addr, marker);
         this.markerArr.push(marker);
       }
       this.markerClusterer = new BMapLib.MarkerClusterer(this.map, { markers: this.markerArr }); // 点聚合
@@ -321,22 +386,21 @@ export default {
       // this.map.setViewport(pointArray); // 让所有点在视野范围内
     },
     // 标注点击事件
-    addClickHandler(content, marker) {
+    addClickHandler(count, addr, marker) {
       marker.addEventListener('click', (e) => {
-        this.openInfo(content, e);
+        this.openInfo(count, addr, e);
       });
     },
     // 标注信息窗口
-    openInfo(content, e) {
+    openInfo(count, addr, e) {
       const opts = {
         width: 50, // 信息窗口宽度
         height: 10, // 信息窗口高度
-        title: '信息窗口', // 信息窗口标题
         enableMessage: true, // 设置允许信息窗发送短息
       };
       const p = e.target;
       const point = new BMap.Point(p.getPosition().lng, p.getPosition().lat);
-      const infoWindow = new BMap.InfoWindow(content.toString(), opts); // 创建信息窗口对象
+      const infoWindow = new BMap.InfoWindow(`${addr}-${count}人`, opts); // 创建信息窗口对象
       this.map.openInfoWindow(infoWindow, point); // 开启信息窗口
     },
     // 加载热力图
@@ -358,10 +422,6 @@ export default {
     },
     // 加载画图功能
     drawingShow() {
-      // const myDrag = new BMapLib.RectangleZoom(this.map, {
-      //   followText: '拖拽鼠标进行操作',
-      // });
-      // myDrag.open(); //开启拉框放大
       const circleOptions = {
         strokeColor: '#9B506F', // 边线颜色。
         fillColor: '#9B506F', // 填充颜色。当参数为空时，圆形将没有填充效果。
@@ -377,6 +437,7 @@ export default {
         strokeOpacity: 0.8, // 边线透明度，取值范围0 - 1。
         fillOpacity: 0.3, // 填充的透明度，取值范围0 - 1。
         strokeStyle: 'dashed', // 边线的样式，solid或dashed。
+        enableEditing: true,
       };
 
       this.drawingManager = new BMapLib.DrawingManager(this.map, {
@@ -395,18 +456,64 @@ export default {
         polygonOptions, // 多边形的样式
         // rectangleOptions: styleOptions, // 矩形的样式
       });
+      // 添加鼠标绘制工具监听事件，用于获取绘制结果
+      this.drawingManager.addEventListener('overlaycomplete', this.overlaycomplete);
       this.drawingManager.addEventListener('circlecomplete', this.circlecomplete);
       this.drawingManager.addEventListener('polygoncomplete', this.polygoncomplete);
     },
-    btnClear() {
-      this.map.clearOverlays();
+    // 覆盖物上添加右键菜单
+    saveMenu(overlay) {
+      const saveMarker = () => {
+        console.log(overlay.getPath());
+        let a = '';
+        for (let i = 0; i < overlay.getPath().length; i += 1) {
+          a += `（${overlay.getPath()[i].lat}，${overlay.getPath()[i].lng}）`;
+        }
+        a = `<div class="dg-message">您创建的${
+          overlay.getPath().length
+        }个坐标点分别为：<br/>${a}<br/><br/></div>请输入自定义的供电区名称`;
+        this.$prompt(a, '自定义供电区', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          dangerouslyUseHTMLString: true,
+        })
+          .then(({ value }) => {
+            this.$message({
+              type: 'success',
+              message: '保存成功',
+            });
+          })
+          .catch(() => {});
+      };
+      const markerMenu = new BMap.ContextMenu();
+      markerMenu.addItem(new BMap.MenuItem('保存', saveMarker.bind(overlay)));
+      overlay.addContextMenu(markerMenu);
 
+      this.myDrag = new BMapLib.RectangleZoom(this.map, {
+        followText: '拖拽鼠标进行操作',
+      });
+      this.myDrag.open(); // 开启拉框放大
+    },
+    overlaycomplete(e) {
+      console.log(444, e.drawingMode);
+      this.overlayTools = [];
+      this.overlayTools.push({ val: e.overlay, type: e.drawingMode });
+    },
+    btnClear() {
+      for (let i = 0; i < this.overlayTools.length; i += 1) {
+        this.map.removeOverlay(this.overlayTools[i].val);
+      }
+      // this.map.clearOverlays();
       this.markerShow(); // 标注
       this.heatmapShow(); // 热力图
     },
     //  地图移动事件
     mapMouseMove(e) {
       this.mousePoint = e.point;
+    },
+    // 日期搜索值
+    selectValue(val) {
+      console.log(val);
     },
   },
 };
@@ -444,7 +551,7 @@ export default {
   width: 100%;
   height: 100%;
   top: 0;
-  left: 0;
+  right: 0;
   z-index: 1;
 }
 .leftnav {
@@ -514,6 +621,10 @@ export default {
 }
 </style>
 <style>
+.dg-message {
+  max-height: 120px;
+  overflow-y: auto;
+}
 .map-button .el-select {
   width: 130px;
 }

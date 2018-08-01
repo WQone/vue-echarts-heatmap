@@ -1,5 +1,5 @@
 <template>
-  <el-date-picker v-model="value" type="datetimerange" :picker-options="pickerOptions" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" align="right">
+  <el-date-picker v-model="value" type="datetimerange" :picker-options="pickerOptions" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" align="right" @change="getDate">
   </el-date-picker>
 </template>
 
@@ -44,13 +44,21 @@ export default {
   props: {
     title: String,
   },
+  methods: {
+    getDate(val) {
+      const arr = [];
+      arr[0] = this.convert.convertDate(val[0], 1);
+      arr[1] = this.convert.convertDate(val[1], 1);
+      this.$emit('selectValue', arr);
+    },
+  },
 };
 </script>
 <style>
 .map-date input {
   font-size: 11px;
 }
-.el-range-editor .el-range-input{
+.el-range-editor .el-range-input {
   font-size: 13px;
 }
 .map-date .el-input__inner {
@@ -84,7 +92,7 @@ export default {
 .el-picker-panel__body {
   margin-left: 75px !important;
   width: 445px;
-  min-width: 430px!important;
+  min-width: 430px !important;
 }
 .el-date-range-picker.has-sidebar {
   width: 525px;

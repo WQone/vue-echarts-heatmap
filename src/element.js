@@ -69,6 +69,10 @@ import {
   Notification,
 } from 'element-ui';
 
+import convert from './utils/convert'; //  转换
+
+Vue.prototype.convert = convert;
+
 Vue.use(Pagination);
 Vue.use(Dialog);
 Vue.use(Autocomplete);
