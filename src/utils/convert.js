@@ -137,12 +137,29 @@ const getJSON = (str) => {
   return ret;
 };
 
+// JS 取得一个区间的随机整数 最小n 最大m
+const rnd = (n, m) => {
+  const random = Math.floor(Math.random() * (m - n + 1) + n);
+  return random;
+};
+
+const GetRandomNum = (Min, Max) => {
+  const Range = Max - Min;
+  const Rand = Math.random();
+  return Min + Math.round(Rand * Range);
+};
+
 // 获取区域下拉分类
-const getCity = (data) => {
+const getCity = (data, type) => {
   const arr = [];
   const arrs = [];
   for (let i = 0; i < data.length; i += 1) {
     const item = data[i];
+    item.count = rnd(20000, 800000);
+    item.name = `${item.addr.substring(item.addr.length - 3)}供电所`;
+    // item.lng = GetRandomNum(104, 104.5) + Math.random();
+    // item.lat = GetRandomNum(31, 31.5) + Math.random();
+    arrs.push(item);
     item.children = [];
     if (item.rank === '一级') {
       arr.push(item);
@@ -151,10 +168,13 @@ const getCity = (data) => {
   for (let j = 0; j < arr.length; j += 1) {
     for (let m = 0; m < data.length; m += 1) {
       const childItem = data[m];
-      if (childItem.class === arr[j].class) {
+      if (childItem.class === arr[j].class && childItem.rank !== '一级') {
         arr[j].children.push(childItem);
       }
     }
+  }
+  if (type === 1) {
+    return arrs;
   }
   return arr;
 };
@@ -165,5 +185,7 @@ export default {
   convertDateOther,
   getJSON,
   convertDateNew,
+  rnd,
   getCity,
+  GetRandomNum,
 };
