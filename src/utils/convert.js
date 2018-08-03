@@ -151,26 +151,17 @@ const GetRandomNum = (Min, Max) => {
 
 // 获取区域下拉分类
 const getCity = (data, type) => {
-  const arr = [];
+  const arr = data;
   const arrs = [];
   for (let i = 0; i < data.length; i += 1) {
-    const item = data[i];
-    item.count = rnd(20000, 800000);
-    item.name = `${item.addr.substring(item.addr.length - 3)}供电所`;
-    // item.lng = GetRandomNum(104, 104.5) + Math.random();
-    // item.lat = GetRandomNum(31, 31.5) + Math.random();
-    arrs.push(item);
-    item.children = [];
-    if (item.rank === '一级') {
-      arr.push(item);
-    }
-  }
-  for (let j = 0; j < arr.length; j += 1) {
-    for (let m = 0; m < data.length; m += 1) {
-      const childItem = data[m];
-      if (childItem.class === arr[j].class && childItem.rank !== '一级') {
-        arr[j].children.push(childItem);
-      }
+    for (let j = 0; j < data[i].children.length; j += 1) {
+      const childItem = data[i].children[j];
+      childItem.count = rnd(20000, 800000);
+      // item.lng = GetRandomNum(104, 104.5) + Math.random();
+      // item.lat = GetRandomNum(31, 31.5) + Math.random();
+      childItem.name = `${childItem.addr.substring(childItem.addr.length - 3)}供电所`;
+      arr[i].children[j] = childItem;
+      arrs.push(childItem);
     }
   }
   if (type === 1) {

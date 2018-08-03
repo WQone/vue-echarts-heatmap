@@ -1,6 +1,5 @@
 <template>
-  <el-date-picker v-model="value" type="datetimerange" :picker-options="pickerOptions" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" align="right" @change="getDate">
-    4444444444
+  <el-date-picker v-model="value" :type="type" :picker-options="pickerOptions" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" align="right" @change="getDate">
   </el-date-picker>
 </template>
 
@@ -9,215 +8,31 @@ import freeDate from './freeDate';
 
 export default {
   mounted() {
-    // for (let i = 0; i < freeDate.length; i += 1) {
-    //   const item = freeDate[i];
-    //   this.$set(this.picker.shortcuts, [i], {
-    //     text: item.name,
-    //     onClick(picker) {
-    //       const end = new Date();
-    //       const start = new Date();
-    //       start.setTime(start.getTime() - 3600 * 1000 * 24 * 7);
-    //       picker.$emit('pick', [start, end]);
-    //     },
-    //   });
-    // }
+    // console.log(this.convert.dateTime('2017-07-14 00:00:00'), new Date());
+    for (let i = 0; i < freeDate.length; i += 1) {
+      const item = freeDate[i];
+      const that = this;
+      this.$set(this.pickerOptions.shortcuts, [i], {
+        text: item.name,
+        onClick(picker) {
+          const end = new Date();
+          const start = that.convert.dateTime(`${picker.leftYear}-${item.date} 00:00:00`);
+          end.setTime(start + 3600 * 1000 * 24 * (item.num ? item.num : 1));
+          that.value = [new Date(start), end];
+          console.log(picker.leftYear);
+          // that.type = 'year';
+          // picker.$emit('pick', [start, end]);
+        },
+      });
+    }
   },
   data() {
     return {
+      type: 'datetimerange',
       pickerOptions: {
-        shortcuts: [
-          {
-            text: '最近一周',
-            onClick(picker) {
-              const end = new Date();
-              const start = new Date();
-              start.setTime(start.getTime() - 3600 * 1000 * 24 * 7);
-              picker.$emit('pick', [start, end]);
-            },
-          },
-          {
-            text: '最近一个月',
-            onClick(picker) {
-              const end = new Date();
-              const start = new Date();
-              start.setTime(start.getTime() - 3600 * 1000 * 24 * 30);
-              picker.$emit('pick', [start, end]);
-            },
-          },
-          {
-            text: '最近三个月',
-            onClick(picker) {
-              const end = new Date();
-              const start = new Date();
-              start.setTime(start.getTime() - 3600 * 1000 * 24 * 90);
-              picker.$emit('pick', [start, end]);
-            },
-          },
-          {
-            text: '最近一周',
-            onClick(picker) {
-              const end = new Date();
-              const start = new Date();
-              start.setTime(start.getTime() - 3600 * 1000 * 24 * 7);
-              picker.$emit('pick', [start, end]);
-            },
-          },
-          {
-            text: '最近一个月',
-            onClick(picker) {
-              const end = new Date();
-              const start = new Date();
-              start.setTime(start.getTime() - 3600 * 1000 * 24 * 30);
-              picker.$emit('pick', [start, end]);
-            },
-          },
-          {
-            text: '最近三个月',
-            onClick(picker) {
-              const end = new Date();
-              const start = new Date();
-              start.setTime(start.getTime() - 3600 * 1000 * 24 * 90);
-              picker.$emit('pick', [start, end]);
-            },
-          },
-          {
-            text: '最近一周',
-            onClick(picker) {
-              const end = new Date();
-              const start = new Date();
-              start.setTime(start.getTime() - 3600 * 1000 * 24 * 7);
-              picker.$emit('pick', [start, end]);
-            },
-          },
-          {
-            text: '最近一个月',
-            onClick(picker) {
-              const end = new Date();
-              const start = new Date();
-              start.setTime(start.getTime() - 3600 * 1000 * 24 * 30);
-              picker.$emit('pick', [start, end]);
-            },
-          },
-          {
-            text: '最近三个月',
-            onClick(picker) {
-              const end = new Date();
-              const start = new Date();
-              start.setTime(start.getTime() - 3600 * 1000 * 24 * 90);
-              picker.$emit('pick', [start, end]);
-            },
-          },
-          {
-            text: '最近一周',
-            onClick(picker) {
-              const end = new Date();
-              const start = new Date();
-              start.setTime(start.getTime() - 3600 * 1000 * 24 * 7);
-              picker.$emit('pick', [start, end]);
-            },
-          },
-          {
-            text: '最近一个月',
-            onClick(picker) {
-              const end = new Date();
-              const start = new Date();
-              start.setTime(start.getTime() - 3600 * 1000 * 24 * 30);
-              picker.$emit('pick', [start, end]);
-            },
-          },
-          {
-            text: '最近三个月',
-            onClick(picker) {
-              const end = new Date();
-              const start = new Date();
-              start.setTime(start.getTime() - 3600 * 1000 * 24 * 90);
-              picker.$emit('pick', [start, end]);
-            },
-          },
-          {
-            text: '最近一周',
-            onClick(picker) {
-              const end = new Date();
-              const start = new Date();
-              start.setTime(start.getTime() - 3600 * 1000 * 24 * 7);
-              picker.$emit('pick', [start, end]);
-            },
-          },
-          {
-            text: '最近一个月',
-            onClick(picker) {
-              const end = new Date();
-              const start = new Date();
-              start.setTime(start.getTime() - 3600 * 1000 * 24 * 30);
-              picker.$emit('pick', [start, end]);
-            },
-          },
-          {
-            text: '最近三个月',
-            onClick(picker) {
-              const end = new Date();
-              const start = new Date();
-              start.setTime(start.getTime() - 3600 * 1000 * 24 * 90);
-              picker.$emit('pick', [start, end]);
-            },
-          },
-          {
-            text: '最近一周',
-            onClick(picker) {
-              const end = new Date();
-              const start = new Date();
-              start.setTime(start.getTime() - 3600 * 1000 * 24 * 7);
-              picker.$emit('pick', [start, end]);
-            },
-          },
-          {
-            text: '最近一个月',
-            onClick(picker) {
-              const end = new Date();
-              const start = new Date();
-              start.setTime(start.getTime() - 3600 * 1000 * 24 * 30);
-              picker.$emit('pick', [start, end]);
-            },
-          },
-          {
-            text: '最近三个月',
-            onClick(picker) {
-              const end = new Date();
-              const start = new Date();
-              start.setTime(start.getTime() - 3600 * 1000 * 24 * 90);
-              picker.$emit('pick', [start, end]);
-            },
-          },
-          {
-            text: '最近一周',
-            onClick(picker) {
-              const end = new Date();
-              const start = new Date();
-              start.setTime(start.getTime() - 3600 * 1000 * 24 * 7);
-              picker.$emit('pick', [start, end]);
-            },
-          },
-          {
-            text: '最近一个月',
-            onClick(picker) {
-              const end = new Date();
-              const start = new Date();
-              start.setTime(start.getTime() - 3600 * 1000 * 24 * 30);
-              picker.$emit('pick', [start, end]);
-            },
-          },
-          {
-            text: '最近三个月',
-            onClick(picker) {
-              const end = new Date();
-              const start = new Date();
-              start.setTime(start.getTime() - 3600 * 1000 * 24 * 90);
-              picker.$emit('pick', [start, end]);
-            },
-          },
-        ],
+        shortcuts: [],
       },
-      value: '',
+      value: [],
     };
   },
   props: {
@@ -266,10 +81,12 @@ export default {
   line-height: 27px !important;
 }
 .el-picker-panel__sidebar {
-  width: 75px;
+  width: 80px;
+  height: 90%;
 }
 .el-picker-panel__shortcut {
   font-size: 11px;
+  /* padding-left: 5px; */
 }
 .el-picker-panel__body {
   margin-left: 75px !important;

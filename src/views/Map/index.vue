@@ -46,13 +46,13 @@
             <div class="select-tip">
               <div>当前区域： {{city}}</div>
               <p class="history">
-                <span>全市</span>
-                <span v-for="(item,index) in cityList" :key="index" @click="changeCity(item)">{{item.class}}</span>
+                <span @click="getBoundary('绵阳市')">全市</span>
+                <span v-for="(item,index) in cityList" :key="index" @click="changeCity(item)">{{item.from}}</span>
               </p>
             </div>
             <div class="select-content">
               <div v-for="(item,index) in cityList" :key="index">
-                <span class="s-title" @click="changeCity(item)">{{item.class}}：</span>
+                <span class="s-title" @click="changeCity(item)">{{item.from}}：</span>
                 <span class="s-txt" v-for="(iChild,indexC) in item.children" :key="indexC" @click="changeCity(iChild, 1)">{{iChild.name}}</span>
               </div>
               <div>
@@ -85,17 +85,23 @@ export default {
     Date,
   },
   created() {
+    this.dataList = this.convert.getCity(dataList, 1);
+    this.cityList = this.convert.getCity(dataList);
     // window.onresize = () => {
     //   this.mapWidth = `width:${window.innerWidth - 300}px;`;
     // };
   },
+  watch: {
+    overlayTools() {
+      console.log('我监听到了');
+    },
+  },
   mounted() {
-    this.getCity();
     this.$nextTick(() => {
       // 在此调用api
       MP(this.ak).then((BMap) => {
         this.map = new BMap.Map('allmap', { enableMapClick: false }); // 构造底图时，关闭底图可点功能
-        this.map.centerAndZoom(new BMap.Point(104.73, 31.47), 11); // 初始化地图，设置中心点坐标和地图级别
+        this.map.centerAndZoom(new BMap.Point(104.676361, 31.468489), 11); // 初始化地图，设置中心点坐标和地图级别
         const mapStyle = {
           // features: ['road', 'building', 'water', 'land'], // 隐藏地图上的poi
           style: 'dark', // 设置地图风格为高端黑
@@ -128,16 +134,15 @@ export default {
   data() {
     return {
       mapWidth: '', // 地图宽度
-      map: '',
-      heatmapOverlay: '',
-      markerClusterer: null, //  点聚合
-      drawingManager: null,
-      markerArr: [], // 标注点数组
-      overlayTools: [], // 画图工具集合
       ak: '1y2hRgyFgIGGkM9m9vmrmsLGsHvwnsUU',
       hotList: ['常驻人口', '工作人口', '实时人口'],
       numList: ['常驻人口', '工作人口', '实时人口'],
-      cityList: [],
+      hotActive: '常驻人口',
+      numActive: '常驻人口',
+      hotShow: true,
+      numShow: true,
+      dataList: [], // 基础所有数据
+      cityList: [], // 城市集合
       city: '绵阳市',
       customCity: [
         {
@@ -149,17 +154,6 @@ export default {
           ],
         },
       ], // 自定义供电区0
-      hotActive: '常驻人口',
-      numActive: '常驻人口',
-      hotShow: true,
-      numShow: true,
-      overlay: [], //  圆形选框/自定义选框
-      mousePoint: { lng: 0, lat: 0 }, //  鼠标移动坐标
-      circleLabel: null, //  绘制圆形标签 即半径显示
-      myDrag: '',
-      tipsLabel: null, //  鼠标提示标签
-      isPolygonDraw: false, //  是否正在画多边形
-      isPolygonIndex: 0, //  画多边形路上点击了多少次
       labelStyle: {
         //  label样式
         color: 'black',
@@ -168,6 +162,28 @@ export default {
         border: 'none',
         zIndex: 999,
       },
+      // 标注信息窗口样式
+      optStyle: {
+        width: 50, // 信息窗口宽度
+        height: 10, // 信息窗口高度
+        enableMessage: true, // 设置允许信息窗发送短息
+      },
+      map: '',
+      heatmapOverlay: '',
+      markerClusterer: null, //  点聚合
+      drawingManager: null,
+      markerArr: [], // 标注点数组
+      overlayTools: [], // 画图工具集合
+      overlay: [], //  圆形选框/自定义选框
+      mousePoint: { lng: 0, lat: 0 }, //  鼠标移动坐标
+      circleLabel: null, //  绘制圆形标签 即半径显示
+      myDrag: '',
+      tipsLabel: null, //  鼠标提示标签
+      isPolygonDraw: false, //  是否正在画多边形
+      isPolygonIndex: 0, //  画多边形路上点击了多少次
+
+      wuqian: [],
+      infoWindowQ: '',
     };
   },
   methods: {
@@ -182,24 +198,30 @@ export default {
     },
     // 改变热力图1/数量图2-类型
     changeType(val, type) {
-      const dataNew = this.convert.getCity(dataList, 1);
-
+      this.dataList = this.convert.getCity(dataList, 1);
+      this.map.closeInfoWindow(this.infoWindowQ);
       if (type === 1) {
         if (!this.hotShow || this.hotActive === val) {
           return;
         }
-        this.heatmapOverlay.setDataSet({ data: dataNew, max: 80000 });
+        this.heatmapOverlay.setDataSet({ data: this.dataList, max: 80000 });
+        if (this.numShow) {
+          this.markerClusterer.clearMarkers();
+
+          this.markerShow(this.dataList);
+        }
         this.hotActive = val;
       } else {
         if (!this.numShow || this.numActive === val) {
           return;
         }
         this.markerClusterer.clearMarkers();
-        for (let i = 0; i < this.overlayTools.length; i += 1) {
-          this.map.removeOverlay(this.overlayTools[i].val);
-        }
-        this.markerShow(dataNew);
+
+        this.markerShow(this.dataList);
         this.numActive = val;
+      }
+      for (let i = 0; i < this.overlayTools.length; i += 1) {
+        this.map.removeOverlay(this.overlayTools[i].val);
       }
       console.log(val);
     },
@@ -250,18 +272,24 @@ export default {
     // 改变当前地区
     changeCity(item, type) {
       console.log(item, this.city);
-      if (type) {
-        this.city = item.name;
-      } else {
-        this.city = item.class;
-      }
       this.getBoundary(item.class);
+      this.map.closeInfoWindow(this.infoWindowQ);
+      if (!type) {
+        this.city = item.from;
+        this.map.setZoom(11);
+        return;
+      }
+      this.city = item.name;
+      this.map.setZoom(14);
       const gc = new BMap.Geocoder();
       gc.getPoint(
         item.addr, // 根据具体地址查找经纬度
         (res) => {
           if (res) {
             this.map.panTo(new BMap.Point(res.lng, res.lat));
+            const point = new BMap.Point(res.lng, res.lat);
+            this.infoWindowQ = new BMap.InfoWindow(`${item.addr}-${item.count}人`, this.optStyle); // 创建信息窗口对象
+            this.map.openInfoWindow(this.infoWindowQ, point); // 开启信息窗口
           } else {
             this.$message.error('没有找到当前的区域位置，请调整后重试哦~');
           }
@@ -297,13 +325,13 @@ export default {
 
       //  热力图
       const arr = [];
-      for (let i = 0; i < dataList.length; i += 1) {
-        const item = dataList[i];
+      for (let i = 0; i < this.dataList.length; i += 1) {
+        const item = this.dataList[i];
         if (BMapLib.GeoUtils.isPointInCircle(new BMap.Point(item.lng, item.lat), circle)) {
           arr.push(item);
         }
       }
-      this.heatmapOverlay.setDataSet({ data: arr, max: 80000 });
+      this.heatmapOverlay.setDataSet({ data: arr, max: 60000 });
 
       this.drawingManager.close();
 
@@ -360,20 +388,29 @@ export default {
 
       //  热力图
       const arr = [];
-      for (let i = 0; i < dataList.length; i += 1) {
-        const item = dataList[i];
+      for (let i = 0; i < this.dataList.length; i += 1) {
+        const item = this.dataList[i];
         if (BMapLib.GeoUtils.isPointInPolygon(new BMap.Point(item.lng, item.lat), polygon)) {
           arr.push(item);
         }
       }
-      this.heatmapOverlay.setDataSet({ data: arr, max: 80000 });
+      this.heatmapOverlay.setDataSet({ data: arr, max: 60000 });
+    },
+    overlaycomplete(e) {
+      console.log(444, e.drawingMode);
+      for (let i = 0; i < this.overlayTools.length; i += 1) {
+        this.map.removeOverlay(this.overlayTools[i].val);
+      }
+      this.map.closeInfoWindow(this.infoWindowQ);
+      this.overlayTools = [];
+      this.overlayTools.push({ val: e.overlay, type: e.drawingMode });
     },
     // 向地图添加标注
     markerShow(val) {
       this.markerArr = [];
       const pointArray = [];
-      for (let i = 0; i < dataList.length; i += 1) {
-        const item = dataList[i];
+      for (let i = 0; i < this.dataList.length; i += 1) {
+        const item = this.dataList[i];
         const marker = new BMap.Marker(new BMap.Point(item.lng, item.lat), {
           // 设置Marker的icon属性为Symbol-样式与偏移
           // eslint-disable-next-line
@@ -404,21 +441,16 @@ export default {
     },
     // 标注信息窗口
     openInfo(count, addr, e) {
-      const opts = {
-        width: 50, // 信息窗口宽度
-        height: 10, // 信息窗口高度
-        enableMessage: true, // 设置允许信息窗发送短息
-      };
       const p = e.target;
       const point = new BMap.Point(p.getPosition().lng, p.getPosition().lat);
-      const infoWindow = new BMap.InfoWindow(`${addr}-${count}人`, opts); // 创建信息窗口对象
+      const infoWindow = new BMap.InfoWindow(`${addr}-${count}人`, this.optStyle); // 创建信息窗口对象
       this.map.openInfoWindow(infoWindow, point); // 开启信息窗口
     },
     // 加载热力图
     heatmapShow() {
       this.heatmapOverlay = new BMapLib.HeatmapOverlay({ radius: 20 });
       this.map.addOverlay(this.heatmapOverlay);
-      this.heatmapOverlay.setDataSet({ data: dataList, max: 80000 });
+      this.heatmapOverlay.setDataSet({ data: this.dataList, max: 80000 });
 
       this.heatmapOverlay.setOptions({
         gradient: {
@@ -496,7 +528,8 @@ export default {
               message: '保存成功',
             });
             console.log(value, b);
-            this.customCity.push({ name: value, myAddress: b });
+            this.customCity.push({ name: value, myAddress: b, val: overlay });
+            this.btnClear();
           })
           .catch(() => {});
       };
@@ -504,17 +537,12 @@ export default {
       markerMenu.addItem(new BMap.MenuItem('保存', saveMarker.bind(overlay)));
       overlay.addContextMenu(markerMenu);
     },
-    overlaycomplete(e) {
-      console.log(444, e.drawingMode);
 
-      this.overlayTools = [];
-      this.overlayTools.push({ val: e.overlay, type: e.drawingMode });
-    },
     btnClear() {
       for (let i = 0; i < this.overlayTools.length; i += 1) {
         this.map.removeOverlay(this.overlayTools[i].val);
       }
-      // this.markerClusterer.clearMarkers();
+      this.markerClusterer.clearMarkers();
       this.markerShow(); // 标注
       this.heatmapShow(); // 热力图
       this.map.removeOverlay(this.circleLabel);
@@ -570,23 +598,24 @@ export default {
     // 日期搜索值
     selectValue(val) {
       console.log(val);
-      const dataNew = this.convert.getCity(dataList, 1);
-      this.heatmapOverlay.setDataSet({ data: dataNew, max: 80000 });
+      this.dataList = this.convert.getCity(dataList, 1);
+      this.heatmapOverlay.setDataSet({ data: this.dataList, max: 80000 });
       this.markerClusterer.clearMarkers();
       for (let i = 0; i < this.overlayTools.length; i += 1) {
         this.map.removeOverlay(this.overlayTools[i].val);
       }
-      this.markerShow(dataNew);
-    },
-    // 获取供电区域
-    getCity() {
-      this.cityList = this.convert.getCity(dataList);
-      console.log(this.convert.getCity(dataList));
+      this.map.closeInfoWindow(this.infoWindowQ);
+      this.markerShow(this.dataList);
     },
     // 跳转自定义区域
     toCustomCity(val) {
       console.log(val);
       const PolygonArr = [];
+      console.log(this.overlayTools);
+      for (let i = 0; i < this.overlayTools.length; i += 1) {
+        this.map.removeOverlay(this.overlayTools[i].val);
+      }
+      this.overlayTools = [];
       for (let i = 0; i < val.myAddress.length; i += 1) {
         const item = val.myAddress[i];
         PolygonArr.push(new BMap.Point(item.lng, item.lat));
@@ -600,13 +629,21 @@ export default {
         strokeStyle: 'solid', // 边线的样式，solid或dashed。
       }); // 创建多边形
       this.map.addOverlay(polygon); // 增加多边形
+      this.overlayTools.push({ val: polygon, type: 'polygon' });
+      this.getMakerLess(this.markerArr, this.dataList, polygon);
     },
     // 添加行政区划边界框
     getBoundary(val) {
       const bdary = new BMap.Boundary();
+      this.markerClusterer.clearMarkers();
+      this.wuqian = [];
+      for (let i = 0; i < this.overlayTools.length; i += 1) {
+        this.map.removeOverlay(this.overlayTools[i].val);
+      }
+      this.overlayTools = [];
       bdary.get(val, (rs) => {
         // 获取行政区域
-        this.map.clearOverlays(); // 清除地图覆盖物
+        // this.map.clearOverlays(); // 清除地图覆盖物
         const count = rs.boundaries.length; // 行政区域的点有多少个
         if (count === 0) {
           this.$message.error('未能获取当前输入行政区域');
@@ -620,10 +657,57 @@ export default {
             fillOpacity: 0.2, // 填充透明度
           }); // 建立多边形覆盖物
           this.map.addOverlay(ply); // 添加覆盖物
+          this.overlayTools.push({ val: ply, type: 'polygon' });
           pointArray = pointArray.concat(ply.getPath());
+
+          const mypolygon = new BMap.Polygon(ply.getPath(), {
+            strokeWeight: ply.getStrokeWeight(),
+          });
+          console.log(mypolygon);
+          //  标点
+          for (let j = 0; j < this.markerArr.length; j += 1) {
+            const item = this.markerArr[j];
+            if (BMapLib.GeoUtils.isPointInPolygon(item.point, mypolygon)) {
+              this.markerClusterer.addMarker(item);
+            }
+          }
+
+          //  热力图
+          for (let m = 0; m < this.dataList.length; m += 1) {
+            const item = this.dataList[m];
+            if (BMapLib.GeoUtils.isPointInPolygon(new BMap.Point(item.lng, item.lat), mypolygon)) {
+              this.wuqian.push(item);
+            }
+          }
         }
         this.map.setViewport(pointArray); // 调整视野
+        console.log(this.wuqian);
+        this.heatmapOverlay.setDataSet({ data: this.wuqian, max: 80000 });
       });
+    },
+    // 加载覆盖物内的标注和热力图
+    // markerData-所有标注点数据集合
+    // hotData-所有点数据
+    // mypolygon-覆盖物数据
+    getMakerLess(markerData, hotData, mypolygon) {
+      const arr = [];
+      this.markerClusterer.clearMarkers();
+      //  标点
+      for (let j = 0; j < markerData.length; j += 1) {
+        const item = markerData[j];
+        if (BMapLib.GeoUtils.isPointInPolygon(item.point, mypolygon)) {
+          this.markerClusterer.addMarker(item);
+        }
+      }
+      //  热力图
+      for (let m = 0; m < hotData.length; m += 1) {
+        const item = hotData[m];
+        if (BMapLib.GeoUtils.isPointInPolygon(new BMap.Point(item.lng, item.lat), mypolygon)) {
+          arr.push(item);
+        }
+      }
+      console.log('444', arr);
+      this.heatmapOverlay.setDataSet({ data: arr, max: 60000 });
     },
   },
 };
