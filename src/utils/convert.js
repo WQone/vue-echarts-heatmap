@@ -156,7 +156,7 @@ const getCity = (data, type) => {
   for (let i = 0; i < data.length; i += 1) {
     for (let j = 0; j < data[i].children.length; j += 1) {
       const childItem = data[i].children[j];
-      childItem.count = rnd(20000, 800000);
+      childItem.count = rnd(20000, 100000);
       // item.lng = GetRandomNum(104, 104.5) + Math.random();
       // item.lat = GetRandomNum(31, 31.5) + Math.random();
       childItem.name = `${childItem.addr.substring(childItem.addr.length - 3)}供电所`;

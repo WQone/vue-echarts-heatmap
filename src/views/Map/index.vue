@@ -29,7 +29,7 @@
         </li>
       </ul>
 
-      <el-button class="btn-clear" @click="btnClear">清除图形</el-button>
+      <el-button class="btn-clear" @click="btnClear" :disabled="!overlayTools.length">清除图形</el-button>
 
     </div>
 
@@ -146,7 +146,7 @@ export default {
       city: '绵阳市',
       customCity: [
         {
-          name: '吴茜',
+          name: '区域1',
           myAddress: [
             { lng: 104.775993, lat: 31.631984 },
             { lng: 105.16, lat: 31.631984 },
@@ -542,10 +542,12 @@ export default {
       for (let i = 0; i < this.overlayTools.length; i += 1) {
         this.map.removeOverlay(this.overlayTools[i].val);
       }
+      this.overlayTools = [];
       this.markerClusterer.clearMarkers();
       this.markerShow(); // 标注
       this.heatmapShow(); // 热力图
       this.map.removeOverlay(this.circleLabel);
+      this.map.closeInfoWindow(this.infoWindowQ);
     },
     //  地图移动事件
     mapMouseMove(e) {
