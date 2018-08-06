@@ -18,7 +18,7 @@
             <i class="icon iconfont icon-dangqianweizhi1" :style="hotActive === item ? '':'color:white;'"></i>{{item}}</span>
         </li>
       </ul>
-      <ul class="card" :style="numShow? '': 'opacity: 0.4;'">
+      <ul class="card" :style="numShow? '': 'opacity: 0.4;'" style="margin-bottom: 15px;">
         <p class="card-title">
           <span>
             <i class="icon iconfont" @click="IsTypeShow(2)" :class="numShow? 'icon-chakan-copy' : 'icon-yanjing'"></i>用电人口分布数量图</span>
@@ -28,46 +28,69 @@
             <i class="icon iconfont icon-dangqianweizhi1" :style="numActive === item ? '':'color:white;'"></i>{{item}}</span>
         </li>
       </ul>
+      <el-menu class="el-menu-vertical-demo" default-active="1">
+        <el-submenu index="1" v-for="(item, index) in menuList" :key="index">
+          <template slot="title">
+            <i class="el-icon-location"></i>
+            <span>{{item.title}}</span>
+          </template>
+          <el-menu-item-group>
+            <el-menu-item :index="myindex.toString()" v-for="(iChild,myindex) in item.children" :key="myindex" @click="msgChange(iChild)">{{iChild}}</el-menu-item>
+          </el-menu-item-group>
+        </el-submenu>
+      </el-menu>
 
       <el-button class="btn-clear" @click="btnClear" :disabled="!overlayTools.length">清除图形</el-button>
 
     </div>
+    <div v-show="!menuActive">
+      <div id="allmap" class="allmap"></div>
 
-    <div id="allmap" class="allmap" :style="mapWidth"></div>
+      <div class="map-button">
+        <el-select :value="city" popper-class="map-select">
+          <el-option :value="city">
+            <el-card class="select-card" shadow="never">
+              <div slot="header" class="clearfix select-header">
+                <span>选择供电区域</span>
+                <!-- <el-button style="float: right;margin-right:10px;font-size:20px;" type="text" size="mini">x</el-button> -->
+              </div>
+              <div class="select-tip">
+                <div>当前区域： {{city}}</div>
+                <p class="history">
+                  <span @click="getBoundary('绵阳市')">全市</span>
+                  <span v-for="(item,index) in cityList" :key="index" @click="changeCity(item)">{{item.from}}</span>
+                </p>
+              </div>
+              <div class="select-content">
+                <div v-for="(item,index) in cityList" :key="index">
+                  <span class="s-title" @click="changeCity(item)">{{item.from}}：</span>
+                  <span class="s-txt" v-for="(iChild,indexC) in item.children" :key="indexC" @click="changeCity(iChild, 1)">{{iChild.name}}</span>
+                </div>
+                <div>
+                  <span class="s-title">自定义供电区：</span>
+                  <span class="s-txt" v-for="(item,index) in customCity" :key="index" @click="toCustomCity(item)">{{item.name}}</span>
+                </div>
+              </div>
+            </el-card>
+          </el-option>
+        </el-select>
+      </div>
+      <div class="map-date">
+        <Date @selectValue="selectValue"></Date>
+      </div>
+      <div class="tip-img"><img src="../../assets/img/density.png" /></div>
+    </div>
+    <div class="allmap" v-show="menuActive">
+      <img src="../../assets/img/one.png"  :style="mapWidth" style="position: relative;left: 300px;" @click="msgChange('正文模板')" v-if="menuActive ==='短信签名'|| menuActive ==='短信模板'|| menuActive ==='正文模板'" />
+      <img src="../../assets/img/two.png"  :style="mapWidth"  style="position: relative;left: 300px;" @click="msgChange('发送短信')" v-else-if="menuActive ==='短信管理' || menuActive ==='发送短信'" />
+      <img src="../../assets/img/end.png"   :style="mapWidth"  style="position: relative;left: 300px;" v-else-if="menuActive ==='发送结果'" />
+    </div>
 
-    <div class="map-button">
-      <el-select :value="city" popper-class="map-select">
-        <el-option :value="city">
-          <el-card class="select-card" shadow="never">
-            <div slot="header" class="clearfix select-header">
-              <span>选择供电区域</span>
-              <!-- <el-button style="float: right;margin-right:10px;font-size:20px;" type="text" size="mini">x</el-button> -->
-            </div>
-            <div class="select-tip">
-              <div>当前区域： {{city}}</div>
-              <p class="history">
-                <span @click="getBoundary('绵阳市')">全市</span>
-                <span v-for="(item,index) in cityList" :key="index" @click="changeCity(item)">{{item.from}}</span>
-              </p>
-            </div>
-            <div class="select-content">
-              <div v-for="(item,index) in cityList" :key="index">
-                <span class="s-title" @click="changeCity(item)">{{item.from}}：</span>
-                <span class="s-txt" v-for="(iChild,indexC) in item.children" :key="indexC" @click="changeCity(iChild, 1)">{{iChild.name}}</span>
-              </div>
-              <div>
-                <span class="s-title">自定义供电区：</span>
-                <span class="s-txt" v-for="(item,index) in customCity" :key="index" @click="toCustomCity(item)">{{item.name}}</span>
-              </div>
-            </div>
-          </el-card>
-        </el-option>
-      </el-select>
-    </div>
-    <div class="map-date">
-      <Date @selectValue="selectValue"></Date>
-    </div>
-    <div class="tip-img"><img src="../../assets/img/density.png" /></div>
+    <el-dialog title="提示" :visible.sync="dialogVisible" width="30%">
+      <img src="../../assets/img/creat.png" style="width:100%;height:auto;" v-if="menuActive ==='正文模板'" />
+      <img src="../../assets/img/sent.png" style="width:100%;height:auto;" v-else-if="menuActive === '发送短信'" />
+    </el-dialog>
+
   </div>
 </template>
 
@@ -87,9 +110,10 @@ export default {
   created() {
     this.dataList = this.convert.getCity(dataList, 1);
     this.cityList = this.convert.getCity(dataList);
-    // window.onresize = () => {
-    //   this.mapWidth = `width:${window.innerWidth - 300}px;`;
-    // };
+    this.mapWidth = `width:${window.innerWidth - 400}px;`;
+    window.onresize = () => {
+      this.mapWidth = `width:${window.innerWidth - 400}px;`;
+    };
   },
   watch: {
     overlayTools() {
@@ -137,6 +161,14 @@ export default {
       ak: '1y2hRgyFgIGGkM9m9vmrmsLGsHvwnsUU',
       hotList: ['常驻人口', '工作人口', '实时人口'],
       numList: ['常驻人口', '工作人口', '实时人口'],
+      menuList: [
+        {
+          title: '消息短信管理',
+          children: ['短信签名', '短信模板', '短信管理', '发送结果'],
+        },
+      ],
+      menuActive: '',
+      dialogVisible: false,
       hotActive: '常驻人口',
       numActive: '常驻人口',
       hotShow: true,
@@ -187,6 +219,17 @@ export default {
     };
   },
   methods: {
+    // 短信菜单
+    msgChange(val) {
+      console.log(val);
+      if (val === '正文模板' || val === '发送短信') {
+        this.dialogVisible = true;
+        this.menuActive = val;
+      } else {
+        this.dialogVisible = false;
+        this.menuActive = val;
+      }
+    },
     checkhHtml5() {
       if (typeof Worker === 'undefined') {
         if (navigator.userAgent.indexOf('MSIE 9.0') <= 0) {
@@ -198,6 +241,7 @@ export default {
     },
     // 改变热力图1/数量图2-类型
     changeType(val, type) {
+      this.menuActive = '';
       this.dataList = this.convert.getCity(dataList, 1);
       this.map.closeInfoWindow(this.infoWindowQ);
       if (type === 1) {
@@ -736,9 +780,6 @@ export default {
 #Map {
   width: 100%;
   height: 100%;
-  position: fixed;
-  left: 0;
-  top: 0;
   overflow: hidden;
   margin: 0 auto;
 }
@@ -759,6 +800,7 @@ export default {
   background: #fff;
   color: #585858;
   z-index: 2;
+  overflow-y:auto;
 }
 .title {
   width: 100%;
@@ -817,6 +859,12 @@ export default {
 }
 </style>
 <style>
+.el-submenu__title{
+   padding-left: 25px !important;
+}
+.el-submenu .el-menu-item {
+  padding-left: 90px !important;
+}
 .dg-message {
   max-height: 120px;
   overflow-y: auto;
