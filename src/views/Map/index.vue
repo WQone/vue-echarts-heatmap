@@ -5,13 +5,13 @@
 
       <p class="title">
         <span>
-          <i class="icon iconfont icon-ditu"></i>用电人口数量/热力图</span>
+          <i class="icon iconfont icon-ditu"></i>人口分布数量/热力图</span>
       </p>
 
       <ul class="card" :style="hotShow? '': 'opacity: 0.4;'">
         <p class="card-title">
           <span>
-            <i class="icon iconfont" @click="IsTypeShow(1)" :class="hotShow? 'icon-chakan-copy' : 'icon-yanjing'"></i>用电人口分布热力图</span>
+            <i class="icon iconfont" @click="IsTypeShow(1)" :class="hotShow? 'icon-chakan-copy' : 'icon-yanjing'"></i>热力图</span>
         </p>
         <li class="card-list" v-for="item in hotList" :key="item" @click="changeType(item, 1)">
           <span>
@@ -21,24 +21,13 @@
       <ul class="card" :style="numShow? '': 'opacity: 0.4;'" style="margin-bottom: 15px;">
         <p class="card-title">
           <span>
-            <i class="icon iconfont" @click="IsTypeShow(2)" :class="numShow? 'icon-chakan-copy' : 'icon-yanjing'"></i>用电人口分布数量图</span>
+            <i class="icon iconfont" @click="IsTypeShow(2)" :class="numShow? 'icon-chakan-copy' : 'icon-yanjing'"></i>数量图</span>
         </p>
         <li class="card-list" v-for="item in numList" :key="item" @click="changeType(item, 2)">
           <span>
             <i class="icon iconfont icon-dangqianweizhi1" :style="numActive === item ? '':'color:white;'"></i>{{item}}</span>
         </li>
       </ul>
-      <el-menu class="el-menu-vertical-demo" default-active="1">
-        <el-submenu index="1" v-for="(item, index) in menuList" :key="index">
-          <template slot="title">
-            <i class="el-icon-location"></i>
-            <span>{{item.title}}</span>
-          </template>
-          <el-menu-item-group>
-            <el-menu-item :index="myindex.toString()" v-for="(iChild,myindex) in item.children" :key="myindex" @click="msgChange(iChild)">{{iChild}}</el-menu-item>
-          </el-menu-item-group>
-        </el-submenu>
-      </el-menu>
 
       <el-button class="btn-clear" @click="btnClear" :disabled="!overlayTools.length">清除图形</el-button>
 
@@ -80,16 +69,6 @@
       </div>
       <div class="tip-img"><img src="../../assets/img/density.png" /></div>
     </div>
-    <div class="allmap" v-show="menuActive">
-      <img src="../../assets/img/one.png"  :style="mapWidth" style="position: relative;left: 300px;" @click="msgChange('正文模板')" v-if="menuActive ==='短信签名'|| menuActive ==='短信模板'|| menuActive ==='正文模板'" />
-      <img src="../../assets/img/two.png"  :style="mapWidth"  style="position: relative;left: 300px;" @click="msgChange('发送短信')" v-else-if="menuActive ==='短信管理' || menuActive ==='发送短信'" />
-      <img src="../../assets/img/end.png"   :style="mapWidth"  style="position: relative;left: 300px;" v-else-if="menuActive ==='发送结果'" />
-    </div>
-
-    <el-dialog title="提示" :visible.sync="dialogVisible" width="30%">
-      <img src="../../assets/img/creat.png" style="width:100%;height:auto;" v-if="menuActive ==='正文模板'" />
-      <img src="../../assets/img/sent.png" style="width:100%;height:auto;" v-else-if="menuActive === '发送短信'" />
-    </el-dialog>
 
   </div>
 </template>
@@ -161,12 +140,6 @@ export default {
       ak: '1y2hRgyFgIGGkM9m9vmrmsLGsHvwnsUU',
       hotList: ['常驻人口', '工作人口', '实时人口'],
       numList: ['常驻人口', '工作人口', '实时人口'],
-      menuList: [
-        {
-          title: '消息短信管理',
-          children: ['短信签名', '短信模板', '短信管理', '发送结果'],
-        },
-      ],
       menuActive: '',
       dialogVisible: false,
       hotActive: '常驻人口',
@@ -800,7 +773,7 @@ export default {
   background: #fff;
   color: #585858;
   z-index: 2;
-  overflow-y:auto;
+  overflow-y: auto;
 }
 .title {
   width: 100%;
@@ -859,8 +832,8 @@ export default {
 }
 </style>
 <style>
-.el-submenu__title{
-   padding-left: 25px !important;
+.el-submenu__title {
+  padding-left: 25px !important;
 }
 .el-submenu .el-menu-item {
   padding-left: 90px !important;

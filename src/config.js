@@ -5,7 +5,7 @@
 let apiHost = `${location.protocol}//${location.host}/api/`;
 
 if (process.env.NODE_ENV && process.env.NODE_ENV === 'production') {
-  apiHost = 'http://10.193.78.206:8088/';
+  apiHost = `${location.protocol}//${location.host}/api/`;
 }
 
 console.log(process.env.NODE_ENV);
